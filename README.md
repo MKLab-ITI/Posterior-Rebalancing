@@ -1,0 +1,2 @@
+# Posterior-Rebalancing
+This repository contains the experimental testbed for the paper <emph>Posterior Rebalance as a Method to Reduce Classifier Bias on Imbalanced Problems</emph>. Our proposed posterior rebalancing method is available as a Weka classifier in <emph>src/algorithms/rebalance/ClassRebalance</emph> (for classifier generation with appropriate options, see <emph>src/algorithms/rebalance/ClassRebalance</emph>).
