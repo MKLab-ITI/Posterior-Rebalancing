@@ -11,7 +11,7 @@ import weka.core.Instances;
 public class Main {
 	public static void main(String[] args) throws Exception {
 		//IMPORT INSTANCES
-		ExperimentScheme experimentSchema = new ExperimentScheme("Logistic", "", "D1inv");
+		ExperimentScheme experimentSchema = new ExperimentScheme("SKNN", "", "DU1inv");
 		int folds = 10;
 		//DatasetScheme databaseSchema = new DatasetScheme("sexuality", "myPersonality", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("religion", "myPersonality", folds);
@@ -24,13 +24,13 @@ public class Main {
 		//DatasetScheme databaseSchema = new DatasetScheme("cell", "UCI", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/dermatology.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/diabetes.arff", ".arff", folds);
-		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/ecoli.arff", ".arff", folds);
+		DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/ecoli.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/hepatitis.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/hypothyroid.arff", ".arff", folds);
 		
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/liver-disorders.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/lung-cancer.arff", ".arff", folds);
-		DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/lymph.arff", ".arff", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/lymph.arff", ".arff", folds);
 		
 
 		//System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream("out\\"+databaseSchema.toString()+" "+experimentSchema.toString()+".txt")), true));

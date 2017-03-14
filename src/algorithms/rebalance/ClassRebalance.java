@@ -52,7 +52,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 	private static final long serialVersionUID = -7184425438333439884L;
 	private static enum FunctionForm {none, linear, exponential, inverse};
 	private static enum PreprocessForm {none, resample, SMOTE};
-	private static enum DynamicForm {none, entropy, margin};
+	private static enum DynamicForm {none, entropy, margin, max};
 	private double[] frequencies;
 	private double rebalanceParameter = 0;
 	private DynamicForm dynamicForm = DynamicForm.none;
@@ -61,7 +61,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 	private Classifier baseClassifier;
 	private boolean pretrained = false;
 	private boolean debug = false;
-	private boolean tune = false;
+	private double tune = 0;
 	private int deepDebug = 1;//level 1 debugs tuning, level 2 also debugs instances, level 0 does not print those things
 	private double sensitive = 0;
 	public static boolean throtleBaseClassifierPrints = true;
@@ -116,8 +116,12 @@ public class ClassRebalance extends Classifier implements Serializable {
 			}
 			else if(options[i].startsWith("-reb")) {
 				i++;
-				tune = options[i].startsWith("tune");
-				if(!tune)
+				tune = 0;
+				if(options[i].startsWith("tune2"))
+					tune = 2;
+				else if(options[i].startsWith("tune"))
+					tune = 1;
+				else
 					rebalanceParameter = Double.parseDouble(options[i]);
 			}
 			else if(options[i].startsWith("-pos")) {
@@ -134,6 +138,8 @@ public class ClassRebalance extends Classifier implements Serializable {
 					dynamicForm = DynamicForm.none;
 				else if(options[i].startsWith("margin"))
 					dynamicForm = DynamicForm.margin;
+				else if(options[i].startsWith("max"))
+					dynamicForm = DynamicForm.max;
 				else
 					throw new Exception("Invalid -dynamic option");
 			}
@@ -216,14 +222,14 @@ public class ClassRebalance extends Classifier implements Serializable {
 				baseClassifier.buildClassifier(trainingInstances);
 		}
 		if(debug) {
-			if(!tune)
+			if(tune==0)
 				System.out.println("Rebalance parameter     : "+rebalanceParameter);
 			else
-				System.out.print("Rebalance parameter     : TUNE ");
+				System.out.print("Rebalance parameter     : TUNE"+(int)tune+" ");
 		}
 		//tune rebalance parameter
-		if(tune)
-			performTuning(instances, -1, 1);
+		if(tune!=0)
+			performTuning(instances, -1+(tune-1), 1+(tune-1));
 	}
 	protected void performTuning(Instances trainingInstances, double minRebalanceParameter, double maxRebalanceParameter) throws Exception {
 		rebalanceParameter = (minRebalanceParameter+maxRebalanceParameter)/2;
@@ -302,6 +308,15 @@ public class ClassRebalance extends Classifier implements Serializable {
 		    }
 	    return fairNom/fairDenom;
 	}
+	protected double rebalanceDerivative(double f, double w, double positive) {
+		if(functionForm==FunctionForm.exponential)
+			return ((1-positive)/2+positive*f)*Math.pow(w, (1-positive)/2+positive*f-1);
+		else if(functionForm==FunctionForm.linear)
+			return ((1+positive)/2-positive*f);
+		else if(functionForm==FunctionForm.inverse) 
+			return Math.pow(f==0?1:f, -positive);// /3.5
+		return f;
+	}
 	protected double rebalanceFunction(double f, double w, double positive, double rebalanceConstant) {
 		if(functionForm==FunctionForm.exponential)
 			return w*(1-rebalanceConstant)+rebalanceConstant*Math.pow(w, (1-positive)/2+positive*f);
@@ -329,8 +344,16 @@ public class ClassRebalance extends Classifier implements Serializable {
 				System.out.println("Sensitive: "+java.util.Arrays.toString(distribution));
 		}
 		double normalizedEntropy = 1;
-		if(dynamicForm!=DynamicForm.none) 
+		if(dynamicForm==DynamicForm.entropy || dynamicForm==DynamicForm.margin) 
 			normalizedEntropy = normalizedEntropy(distribution);
+		if(dynamicForm==DynamicForm.max) {
+			normalizedEntropy = 0;
+			for(int i=0;i<distribution.length;i++) {
+				double der = rebalanceDerivative(frequencies[i], distribution[i], positive);
+				if(der!=0)
+					normalizedEntropy = Math.max(normalizedEntropy, 1/der);
+			}
+		}
 		normalizedEntropy *= entropyEnhancement;
 		//perform rebalancing
 		if(dynamicForm==DynamicForm.margin) 

@@ -80,23 +80,28 @@ public class ExperimentScheme {
 	public String convertScheme(String abbr) {
 		abbr = abbr.toLowerCase();
 		String ret = "";
+		if(abbr.startsWith("d")) {
+			ret += "-debug ";
+			abbr = abbr.substring(1);
+		}
 		if(!abbr.startsWith("u"))
 			ret += "-sensitive 0.1 ";
 		else {
 			ret += "-sensitive 0 ";
 			abbr = abbr.substring(1);
 		}
-		if(abbr.startsWith("d")) {
-			ret += "-debug ";
-			abbr = abbr.substring(1);
+		if(abbr.startsWith("tt")) {
+			ret += "-rebalance tune2 ";
+			abbr = abbr.substring(2);
 		}
-		if(abbr.startsWith("t")) {
+		else if(abbr.startsWith("t")) {
 			ret += "-rebalance tune ";
 			abbr = abbr.substring(1);
 		}
-		else if(abbr.startsWith("1") || abbr.startsWith("e")) {
+		else if(abbr.startsWith("1") || abbr.startsWith("e") || abbr.startsWith("m")|| abbr.startsWith("g")) {
 			ret += "-rebalance 1 ";
-			abbr = abbr.substring(1);
+			if(abbr.startsWith("1"))
+				abbr = abbr.substring(1);
 		}
 		else if(abbr.startsWith("0")) {
 			ret += "-rebalance 0 ";
@@ -107,8 +112,11 @@ public class ExperimentScheme {
 			ret += "-dynamic entropy ";
 			abbr = abbr.substring(1);
 		}
-		else
-		if(abbr.startsWith("m")) {
+		else if(abbr.startsWith("m")) {
+			ret += "-dynamic max ";
+			abbr = abbr.substring(1);
+		}
+		else if(abbr.startsWith("g")) {
 			ret += "-dynamic margin ";
 			abbr = abbr.substring(1);
 		}

@@ -13,7 +13,7 @@ public class LatexResults {
 	public static void main(String[] args) throws Exception {
 		int folds = 10;
 		
-		String scheme = "UTinv+smote";
+		String scheme = "1lin+sample";
 		
 		ArrayList<ExperimentScheme> algorithms = new ArrayList<ExperimentScheme>();
 		algorithms.add(new ExperimentScheme("Logistic", "", scheme));
