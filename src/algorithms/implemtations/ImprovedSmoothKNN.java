@@ -82,7 +82,7 @@ public class ImprovedSmoothKNN extends Classifier implements Serializable {
 		for(int k=0;k<neighbors;k++) {
 			if(k==0) 
 				for(int n=0;n<instances.numInstances();n++) 
-					similarities[n] = dot(instance, instances.instance(n))/norm/norms[n];
+					similarities[n] = dot(instance, instances.instance(n))/norm/norms[n]*instances.instance(n).weight();
 			int selected = -1; 
 			double similarity = 0;
 			for(int n=0;n<instances.numInstances();n++) 

@@ -2,6 +2,7 @@ package algorithms.rebalance;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 
 import weka.classifiers.Classifier;
 import weka.core.Instance;
@@ -34,6 +35,7 @@ import weka.filters.Filter;
  * with normalized weight entropy across weights for selection, so that stronger classifications (i.e.
  * more extreme values and thus lower weight entropies) would not get rebalanced as much. <br/>
  * <code>margin</code> : substract the rebalance function from its max for the particular class frequency
+ * <code>clean[liness]</code> : multiply rebalance parameter with 1-cleanliness of the sample's neighborhood
  * <h2>-pos[itive] | -neg[ative]</h2>
  * Sets rebalance to either positive or negative one (is positive by default).<br/>
  * For undersampling or oversampling, always use positive rebalance. For other case, rebalance parameter
@@ -50,10 +52,12 @@ import weka.filters.Filter;
  */
 public class ClassRebalance extends Classifier implements Serializable {
 	private static final long serialVersionUID = -7184425438333439884L;
-	private static enum FunctionForm {none, linear, exponential, inverse};
+	private static enum FunctionForm {none, linear, exponential, inverse, log};
 	private static enum PreprocessForm {none, resample, SMOTE};
-	private static enum DynamicForm {none, entropy, margin, max};
+	private static enum DynamicForm {none, entropy, margin, max, cleanliness};
 	private double[] frequencies;
+	private double minFrequency = 1;
+	private double maxFrequency = 1;
 	private double rebalanceParameter = 0;
 	private DynamicForm dynamicForm = DynamicForm.none;
 	private FunctionForm functionForm = FunctionForm.none;
@@ -98,6 +102,8 @@ public class ClassRebalance extends Classifier implements Serializable {
 					functionForm = FunctionForm.inverse;
 				else if(options[i].startsWith("lin"))
 					functionForm = FunctionForm.linear;
+				else if(options[i].startsWith("log"))
+					functionForm = FunctionForm.log;
 				else if(options[i].startsWith("non"))
 					functionForm = FunctionForm.none;
 				else
@@ -140,6 +146,8 @@ public class ClassRebalance extends Classifier implements Serializable {
 					dynamicForm = DynamicForm.margin;
 				else if(options[i].startsWith("max"))
 					dynamicForm = DynamicForm.max;
+				else if(options[i].startsWith("clean"))
+					dynamicForm = DynamicForm.cleanliness;
 				else
 					throw new Exception("Invalid -dynamic option");
 			}
@@ -149,22 +157,6 @@ public class ClassRebalance extends Classifier implements Serializable {
 		if(rebalanceSign!=0)
 			rebalanceParameter = rebalanceSign*Math.abs(rebalanceParameter);
 	}
-	public static double[] getPriors(Instances instances) {
-		//obtain frequencies
-		double[] frequencies = new double[instances.numClasses()];
-		for(int i=0;i<instances.numInstances();i++) {
-			Instance instance = instances.instance(i);
-			frequencies[(int)instance.classValue()]++;
-		}
-		//convert to probabilities
-		double sum = 0;
-		for(int i=0;i<frequencies.length;i++)
-			sum += frequencies[i];
-		if(sum!=0)
-			for(int i=0;i<frequencies.length;i++)
-				frequencies[i] /= sum;
-		return frequencies;
-	}
 	public static double getImbalance(double[] frequencies) {
 		double imbalance = 0;
 		for(int i=0;i<frequencies.length;i++)
@@ -172,8 +164,9 @@ public class ClassRebalance extends Classifier implements Serializable {
 				if(i!=j)
 					imbalance += frequencies[i]/frequencies[j];
 		imbalance /= frequencies.length/(frequencies.length-1);
-		return imbalance;
+		return 2*imbalance;
 	}
+	private Instances trainingInstances;
 	@Override
 	public void buildClassifier(Instances instances) throws Exception {
 		if(debug) {
@@ -181,7 +174,15 @@ public class ClassRebalance extends Classifier implements Serializable {
 			System.out.println("Preprocessing           : "+preprocessForm.toString());
 			System.out.println("Dynamic                 : "+dynamicForm.toString());
 		}
-		frequencies = getPriors(instances);
+		frequencies = DatasetMetrics.getPriors(instances);
+		minFrequency = 1;
+		maxFrequency = 0;
+		for(double freq : frequencies)
+			if(freq<minFrequency)
+				minFrequency = freq;
+		for(double freq : frequencies)
+			if(freq>maxFrequency)
+				maxFrequency = freq;
 		if(debug) {
 			System.out.println("Frequencies             : "+java.util.Arrays.toString(frequencies));
 			System.out.println("Imbalance               : "+getImbalance(frequencies));
@@ -193,7 +194,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 			res.setSampleSizePercent(100);
 			res.setBiasToUniformClass(1);
 			trainingInstances = Filter.useFilter(trainingInstances, res);
-			double[] newFrequencies = getPriors(trainingInstances);
+			double[] newFrequencies = DatasetMetrics.getPriors(trainingInstances);
 			if(debug) {
 				System.out.println("New Frequencies         : "+java.util.Arrays.toString(newFrequencies));
 				System.out.println("New Imbalance           : "+getImbalance(newFrequencies));
@@ -227,6 +228,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 			else
 				System.out.print("Rebalance parameter     : TUNE"+(int)tune+" ");
 		}
+		this.trainingInstances = trainingInstances;
 		//tune rebalance parameter
 		if(tune!=0)
 			performTuning(instances, -1+(tune-1), 1+(tune-1));
@@ -247,6 +249,8 @@ public class ClassRebalance extends Classifier implements Serializable {
 			double leftFairness = obtainFairness(trainingInstances, false);
 			rebalanceParameter = nextRight;
 			double rightFairness = obtainFairness(trainingInstances, false);
+			//System.out.println("\nLeft fairness ("+nextLeft+"): "+leftFairness);
+			//System.out.println("Right fairness ("+nextRight+"): "+rightFairness);
 			if(leftFairness<rightFairness+bias && rightFairness+bias>=prevFairness) {
 				rebalanceParameter = nextRight;
 				r = r_right;
@@ -292,39 +296,73 @@ public class ClassRebalance extends Classifier implements Serializable {
 			if(P[i]!=0)
 				TP[i] /= P[i];
 		//return TPr fairness
-		double fairNom = 0;
-		double fairDenom = 0;
+		double res = 1;
 	    for(int i=0;i<TP.length;i++) 
-		    for(int j=0;j<TP.length;j++) {
-		    	double weight = frequencies[i]*frequencies[j];
-		    	if(i!=j)
-		    		fairDenom += weight;
-		    	//if(signed && (TP[i]-TP[j])*(frequencies[i]-frequencies[j])<0)
-		    		//weight = -weight;
-		    	if(i!=j && TP[i]!=0 && TP[j]!=0) {
-		    		double coupleUnfairness = TP[i]/TP[j]+TP[j]/TP[i];
-		    		fairNom += 2*weight/coupleUnfairness;
-		    	}
-		    }
-	    return fairNom/fairDenom;
+	    	res *= TP[i];
+	    return Math.pow(res, 1.0/TP.length);
 	}
-	protected double rebalanceDerivative(double f, double w, double positive) {
+	protected double rebalanceDerivativeT(double f, double w, double positive) {
 		if(functionForm==FunctionForm.exponential)
 			return ((1-positive)/2+positive*f)*Math.pow(w, (1-positive)/2+positive*f-1);
 		else if(functionForm==FunctionForm.linear)
 			return ((1+positive)/2-positive*f);
 		else if(functionForm==FunctionForm.inverse) 
 			return Math.pow(f==0?1:f, -positive);// /3.5
-		return f;
+		else
+			throw new RuntimeException("Rebalance function derivative not implemented");
+		//return f;
+	}
+	protected double rebalanceFunctionT(double f, double w, double positive) {
+		if(functionForm==FunctionForm.exponential)
+			return Math.pow(w, (1-positive)/2+positive*f);
+		else if(functionForm==FunctionForm.linear)
+			return Math.pow(w, 0.5) * ((1+positive)/2-positive*f);
+		else if(functionForm==FunctionForm.log)
+			return Math.log(1+w)*((1+positive)/2-positive*f);
+		else if(functionForm==FunctionForm.inverse) 
+			return w * Math.pow(f==0?1:f, -positive);// /3.5
+		return w;
 	}
 	protected double rebalanceFunction(double f, double w, double positive, double rebalanceConstant) {
-		if(functionForm==FunctionForm.exponential)
-			return w*(1-rebalanceConstant)+rebalanceConstant*Math.pow(w, (1-positive)/2+positive*f);
-		else if(functionForm==FunctionForm.linear)
-			return w*(1-rebalanceConstant)+rebalanceConstant*w * ((1+positive)/2-positive*f);
-		else if(functionForm==FunctionForm.inverse) 
-			return w*(1-rebalanceConstant)+rebalanceConstant * w * Math.pow(f==0?1:f, -positive);// /3.5
-		return w;
+		if(dynamicForm==DynamicForm.max) 
+			rebalanceConstant = rebalanceConstant/rebalanceDerivativeT(maxFrequency, 1, 1);
+		//else
+			//rebalanceConstant = rebalanceConstant/rebalanceFunctionT(minFrequency, 1, 1);
+		return w*(1-rebalanceConstant) + rebalanceConstant*rebalanceFunctionT(f, w, positive);
+	}
+	protected ArrayList<Instance> getNearestInstances(Instances instances, int k, Instance center) {
+		ArrayList<Instance> candidates = new ArrayList<Instance>();
+		ArrayList<Instance> found = new ArrayList<Instance>();
+		for(int i=0;i<instances.numInstances();i++) 
+			candidates.add(instances.instance(i));
+		while(k>0) {
+			double minDistance = Double.POSITIVE_INFINITY;
+			Instance minInstance = null;
+			for(Instance instance : candidates) {
+				double distance = 0;
+				for(int i=0;i<instance.numAttributes();i++)
+					if(i!=instance.classIndex())
+						distance += Math.abs(instance.value(i)-center.value(i));
+				//distance /= instances.numAttributes()-1;
+				if(distance<minDistance) {
+					minDistance = distance;
+					minInstance = instance;
+				}
+			}
+			candidates.remove(minInstance);
+			found.add(minInstance);
+			k--;
+		}
+		return found;
+	}
+	protected double getNeighborhoodCleanliness(Instance center, int k) {
+		ArrayList<Instance> candidates = getNearestInstances(trainingInstances, k, center);
+		double val = 0;
+		for(Instance instance1 : candidates)
+			for(Instance instance2 : candidates)
+				val += instance1.classValue()==instance2.classValue()?1:0;
+		val /= k*k;
+		return val;
 	}
 	@Override
 	public double[] distributionForInstance(Instance instance) throws Exception {
@@ -346,14 +384,8 @@ public class ClassRebalance extends Classifier implements Serializable {
 		double normalizedEntropy = 1;
 		if(dynamicForm==DynamicForm.entropy || dynamicForm==DynamicForm.margin) 
 			normalizedEntropy = normalizedEntropy(distribution);
-		if(dynamicForm==DynamicForm.max) {
-			normalizedEntropy = 0;
-			for(int i=0;i<distribution.length;i++) {
-				double der = rebalanceDerivative(frequencies[i], distribution[i], positive);
-				if(der!=0)
-					normalizedEntropy = Math.max(normalizedEntropy, 1/der);
-			}
-		}
+		if(dynamicForm==DynamicForm.cleanliness) 
+			normalizedEntropy *= 1-getNeighborhoodCleanliness(instance, 5);
 		normalizedEntropy *= entropyEnhancement;
 		//perform rebalancing
 		if(dynamicForm==DynamicForm.margin) 

@@ -26,7 +26,7 @@ public class DatasetScheme {
 	protected int folds;
 	protected Instances instances;
 	protected Instances trainInstances;
-	public static boolean debug = false;
+	public static boolean debug = true;
 	private Instances nextTrainSet;
 	private Instances nextTestSet;
 	private String name;
@@ -193,6 +193,9 @@ public class DatasetScheme {
 		}
 		else if(dataset.toLowerCase().contains("usemp"))
 			instances = importer.datasetImporters.USEMPImporter.importDatabase("data/usemp/", attribute);
+		else if(dataset.contains(".data")) {
+			instances = importer.datasetImporters.DataImporter.importDatabase(attribute);
+		}
 		else if(dataset.contains("UCI")) {
 			if(attribute.contains("spam")) {
 				String[] classes = {"ham", "spam"};

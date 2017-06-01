@@ -25,8 +25,12 @@ public class ExperimentScheme {
 	public ExperimentScheme(String classifierType, String baseClassifierOptions, String rebalanceScheme) {
 		this.baseClassifierType = classifierType;
 		this.baseClassifierOptions = baseClassifierOptions;
-		this.rebalanceScheme = rebalanceScheme;
+		this.rebalanceScheme = convertScheme(rebalanceScheme);
 		name = classifierType+" "+rebalanceScheme;
+	}
+	
+	public void appendRebalanceOptions(String text) {
+		rebalanceScheme += " " + text;
 	}
 	
 	/**
@@ -40,16 +44,15 @@ public class ExperimentScheme {
 			classifier = new ImprovedSmoothKNN();
 			//classifier = new SmoothKNN(weka.core.Utils.splitOptions("-neighbors 5 -similarity dot -powSim 1 -powWeight 0"));
 		}
+		else if(baseClassifierType.contains("RUSBoost")){
+			classifier = new algorithms.implemtations.RUSBoost(new weka.classifiers.functions.Logistic(),28);
+		}
 		else if(baseClassifierType.contains("KNN")){
 			classifier = new weka.classifiers.lazy.IBk(5);
 			classifier.setOptions(weka.core.Utils.splitOptions("-I"));
 		}
 		else if(baseClassifierType.contains("SVM")) {
-			//classifier = new LibSVMWrapper();//custom implementation of the same thing
-			LibSVM lib = new LibSVM();
-			//lib.setOptions(weka.core.Utils.splitOptions("-h 0"));
-			lib.setProbabilityEstimates(true);
-			classifier = lib;
+			classifier = new algorithms.implemtations.LibSVMWrapper();
 			
 		}
 		else if(baseClassifierType.contains("SMO"))
@@ -67,7 +70,7 @@ public class ExperimentScheme {
 		if(!baseClassifierOptions.isEmpty())
 			classifier.setOptions(weka.core.Utils.splitOptions(baseClassifierOptions));
 		if(!rebalanceScheme.isEmpty())
-			classifier = new ClassRebalance(classifier, weka.core.Utils.splitOptions(convertScheme(rebalanceScheme)));
+			classifier = new ClassRebalance(classifier, weka.core.Utils.splitOptions(rebalanceScheme));
 		return classifier;
 	}
 	
@@ -133,6 +136,10 @@ public class ExperimentScheme {
 		}
 		else if(abbr.startsWith("lin")){
 			ret += "-function lin ";
+			abbr = abbr.substring(3);
+		}
+		else if(abbr.startsWith("log")){
+			ret += "-function log ";
 			abbr = abbr.substring(3);
 		}
 		else

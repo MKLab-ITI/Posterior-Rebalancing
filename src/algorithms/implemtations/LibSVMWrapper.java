@@ -14,14 +14,13 @@ import weka.core.Instances;
  * <h1>LibSVMWrapper</h1>
  * This class can be used to support the libsvm implementation for Support Vector Machines as a Weka
  * {@link Classifier}.
- * @deprecated We have switched to a distributed wrapper.
  * 
  * @author Krasanakis Emmanouil
  */
 public class LibSVMWrapper extends Classifier implements Serializable {
-	private static final long serialVersionUID = -38874855411523024L;
+	private static final long serialVersionUID = 941746327712873734L;
 	protected svm_model model;
-	protected svm_parameter param = new svm_parameter();
+	protected svm_parameter param;
 	protected int classIndex;
 	
 	public LibSVMWrapper() {
@@ -53,13 +52,14 @@ public class LibSVMWrapper extends Classifier implements Serializable {
 
 	@Override
 	public void buildClassifier(Instances instances) throws Exception {
+		param = new svm_parameter();
 		param.probability = 1;
         param.svm_type = svm_parameter.C_SVC;
-        param.kernel_type = svm_parameter.RBF;
+        param.kernel_type = svm_parameter.LINEAR;
         param.gamma = 1.0/(instances.numAttributes()-1);
         param.nu = 0.5;
-        param.cache_size = 20000;
-        param.C = 10;
+        param.cache_size = 100;
+        param.C = 1;
         param.eps = 0.001;
         param.p = 0.1;
         

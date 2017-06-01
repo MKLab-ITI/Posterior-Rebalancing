@@ -11,7 +11,8 @@ import weka.core.Instances;
 public class Main {
 	public static void main(String[] args) throws Exception {
 		//IMPORT INSTANCES
-		ExperimentScheme experimentSchema = new ExperimentScheme("SKNN", "", "DU1inv");
+		ExperimentScheme experimentSchema = new ExperimentScheme("RUSBoost", "", "D0");
+		experimentSchema.appendRebalanceOptions("-rebalance 0");
 		int folds = 10;
 		//DatasetScheme databaseSchema = new DatasetScheme("sexuality", "myPersonality", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("religion", "myPersonality", folds);
@@ -24,13 +25,23 @@ public class Main {
 		//DatasetScheme databaseSchema = new DatasetScheme("cell", "UCI", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/dermatology.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/diabetes.arff", ".arff", folds);
-		DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/ecoli.arff", ".arff", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/ecoli.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/hepatitis.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/hypothyroid.arff", ".arff", folds);
-		
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/liver-disorders.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/lung-cancer.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/lymph.arff", ".arff", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/thyroid/new-thyroid.data", ".data", folds);
+		
+		
+		//IMBALANCED DATASETS
+		DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/ThoraricSurgery.arff", ".arff", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/thyroid/sick-euthyroid.data", ".data", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/pageblocks/page-blocks.data", ".data", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/glass/glass.data", ".data", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/yeast/yeast.data", ".data", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/ecoli.arff", ".arff", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/abalone/abalone.data", ".data", folds);
 		
 
 		//System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream("out\\"+databaseSchema.toString()+" "+experimentSchema.toString()+".txt")), true));
@@ -66,11 +77,14 @@ public class Main {
 		for(int i=0;i<classFrequencies.length;i++)
 			classFrequencies[i] /= sumFrequencies;
 		double meanTPr = 0;
+		double GTPr = 1;
 	    for(int i=0;i<instances.numClasses();i++)  {
 		    System.out.println(toLength("TPR "+instances.classAttribute().value(i), 35)+toPercentage(eval.truePositiveRate(i))+"\t   ("+toPercentage(classFrequencies[i])+" presence)");
 		    meanTPr += eval.truePositiveRate(i)/instances.numClasses();
+		    GTPr *= Math.pow(eval.truePositiveRate(i),1.0/instances.numClasses());
 	    }
-	    System.out.println(toLength("Mean TPR @ "+instances.classAttribute(), 35)+toPercentage(meanTPr));
+	    System.out.println(toLength("AM for "+instances.classAttribute(), 35)+toPercentage(meanTPr));
+	    System.out.println(toLength("GM for "+instances.classAttribute(), 35)+toPercentage(GTPr));
 	    
 		System.out.println("\n================ Global Report");
 	    System.out.println(toLength("Weighted AUC", 25)+toPercentage(eval.weightedAreaUnderROC(), 0));
