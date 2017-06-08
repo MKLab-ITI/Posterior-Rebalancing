@@ -46,11 +46,9 @@ public class RUSBoost extends Classifier implements Serializable {
 				instances.instance(i).setWeight(sampleDistribution[i]);
 			
 			//select training set
-			weka.filters.supervised.instance.Resample res = new weka.filters.supervised.instance.Resample();
+			weka.filters.supervised.instance.SpreadSubsample res = new weka.filters.supervised.instance.SpreadSubsample();
 			res.setInputFormat(instances);
-			res.setSampleSizePercent(100);
-			res.setBiasToUniformClass(0.15);
-			res.setNoReplacement(true);
+			res.setDistributionSpread(5);//5 is optimal for thoratic
 			Instances trainingInstances = Filter.useFilter(instances, res);
 			double sumTraining = 0;
 			for(int i=0;i<trainingInstances.numInstances();i++)
@@ -76,13 +74,13 @@ public class RUSBoost extends Classifier implements Serializable {
 				int classifierEstimation = (int)classifyInstance(instances.instance(i));
 				int classValue = (int)instances.instance(i).classValue();
 				double [] distribution = distributionForInstance(instances.instance(i));
-				classifierErrors[i] = 1-distribution[classValue];
 				positives[classValue]++;
-				if(classifierEstimation==classValue) {
+				if(classifierEstimation==classValue) 
 					truePositives[classValue]++;
-					pseudoLoss += sampleDistribution[i]*classifierErrors[i]*priors[(int)instances.instance(i).classValue()];
-				}
-				maxPseudoLoss += sampleDistribution[i]*priors[(int)instances.instance(i).classValue()];
+				else
+					classifierErrors[i] = 1-distribution[classValue]+distribution[classifierEstimation];
+				pseudoLoss += sampleDistribution[i]*classifierErrors[i]*priors[(int)instances.instance(i).classValue()];
+				maxPseudoLoss += 2*sampleDistribution[i]*priors[(int)instances.instance(i).classValue()];
 			}
 			Tfinal = prevTFinal;
 			double performance = 1;
@@ -93,12 +91,11 @@ public class RUSBoost extends Classifier implements Serializable {
 				Tfinal = t+1;
 				TfinalPerformance = performance;
 			}
-			
-			//update distribution
 			pseudoLoss /= maxPseudoLoss;
+			//update distribution
 			double updateParameter = pseudoLoss/(1-pseudoLoss);
 			for(int i=0;i<sampleDistribution.length;i++)
-				sampleDistribution[i] *= Math.pow(updateParameter, 0.5*classifierErrors[i]);
+				sampleDistribution[i] *= Math.pow(updateParameter, 1-0.5*classifierErrors[i]);
 			classifierWeights[t] = Math.log(updateParameter);
 		
 			//normalize distribution

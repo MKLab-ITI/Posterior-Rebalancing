@@ -11,8 +11,8 @@ import weka.core.Instances;
 public class Main {
 	public static void main(String[] args) throws Exception {
 		//IMPORT INSTANCES
-		ExperimentScheme experimentSchema = new ExperimentScheme("RUSBoost", "", "D0");
-		experimentSchema.appendRebalanceOptions("-rebalance 0");
+		ExperimentScheme experimentSchema = new ExperimentScheme("RUSBoost", "", "D1inv");
+		experimentSchema.appendRebalanceOptions("-rebalance -0.1");
 		int folds = 10;
 		//DatasetScheme databaseSchema = new DatasetScheme("sexuality", "myPersonality", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("religion", "myPersonality", folds);
@@ -35,8 +35,8 @@ public class Main {
 		
 		
 		//IMBALANCED DATASETS
-		DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/ThoraricSurgery.arff", ".arff", folds);
-		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/thyroid/sick-euthyroid.data", ".data", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/ThoraricSurgery.arff", ".arff", folds);
+		DatasetScheme databaseSchema = new DatasetScheme("data/UCI/thyroid/sick-euthyroid.data", ".data", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/pageblocks/page-blocks.data", ".data", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/glass/glass.data", ".data", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/yeast/yeast.data", ".data", folds);
