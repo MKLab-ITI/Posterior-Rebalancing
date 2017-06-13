@@ -1,5 +1,5 @@
 package algorithms.rebalance;
-import algorithms.implemtations.ImprovedSmoothKNN;
+import algorithms.implementations.ImprovedSmoothKNN;
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LibSVM;
 
@@ -45,14 +45,14 @@ public class ExperimentScheme {
 			//classifier = new SmoothKNN(weka.core.Utils.splitOptions("-neighbors 5 -similarity dot -powSim 1 -powWeight 0"));
 		}
 		else if(baseClassifierType.contains("RUSBoost")){
-			classifier = new algorithms.implemtations.RUSBoost(new weka.classifiers.functions.Logistic(),28);
+			classifier = new algorithms.implementations.RUSBoost(new weka.classifiers.functions.Logistic(),28);
 		}
 		else if(baseClassifierType.contains("KNN")){
 			classifier = new weka.classifiers.lazy.IBk(5);
 			classifier.setOptions(weka.core.Utils.splitOptions("-I"));
 		}
 		else if(baseClassifierType.contains("SVM")) {
-			classifier = new algorithms.implemtations.LibSVMWrapper();
+			classifier = new algorithms.implementations.LibSVMWrapper();
 			
 		}
 		else if(baseClassifierType.contains("SMO"))

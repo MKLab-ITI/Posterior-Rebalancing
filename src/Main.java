@@ -11,8 +11,7 @@ import weka.core.Instances;
 public class Main {
 	public static void main(String[] args) throws Exception {
 		//IMPORT INSTANCES
-		ExperimentScheme experimentSchema = new ExperimentScheme("RUSBoost", "", "D1inv");
-		experimentSchema.appendRebalanceOptions("-rebalance -0.1");
+		ExperimentScheme experimentSchema = new ExperimentScheme("Logistic", "", "Tinv");
 		int folds = 10;
 		//DatasetScheme databaseSchema = new DatasetScheme("sexuality", "myPersonality", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("religion", "myPersonality", folds);
@@ -35,13 +34,13 @@ public class Main {
 		
 		
 		//IMBALANCED DATASETS
-		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/ThoraricSurgery.arff", ".arff", folds);
-		DatasetScheme databaseSchema = new DatasetScheme("data/UCI/thyroid/sick-euthyroid.data", ".data", folds);
-		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/pageblocks/page-blocks.data", ".data", folds);
-		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/glass/glass.data", ".data", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/ThoraricSurgery.arff", ".arff", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/sick-euthyroid.data", ".data", folds);
+		DatasetScheme databaseSchema = new DatasetScheme("data/UCI/page-blocks.data", ".data", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/glass.data", ".data", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/yeast/yeast.data", ".data", folds);
-		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/ecoli.arff", ".arff", folds);
-		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/abalone/abalone.data", ".data", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/	.arff", ".arff", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/abalone.data", ".data", folds);
 		
 
 		//System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream("out\\"+databaseSchema.toString()+" "+experimentSchema.toString()+".txt")), true));
@@ -91,7 +90,7 @@ public class Main {
 	    System.out.println(toLength("Weighted TPR", 25)+toPercentage(eval.weightedTruePositiveRate(), 0));
 		double fairNom = 0;
 		double fairDenom = 0;
-	    for(int i=0;i<instances.numClasses();i++) 
+	    /*for(int i=0;i<instances.numClasses();i++) 
 		    for(int j=0;j<instances.numClasses();j++) {
 		    	double weight = (classFrequencies[i]*classFrequencies[j]);
 		    	if(i!=j && eval.truePositiveRate(i)!=0 && eval.truePositiveRate(j)!=0) {
@@ -101,7 +100,15 @@ public class Main {
 		    	if(i!=j)
 		    		fairDenom += weight;
 		    }
-	    System.out.println(toLength("Fairness", 25)+toPercentage(fairNom/fairDenom, 0));
+		    */
+		for(int i=0;i<instances.numClasses();i++) 
+		    for(int j=0;j<instances.numClasses();j++)
+			    if(i!=j){
+			    	fairNom += classFrequencies[i]*classFrequencies[j]*Math.abs(eval.truePositiveRate(i)-eval.truePositiveRate(j));
+			    	fairDenom += classFrequencies[i]*classFrequencies[j];
+			    }
+		
+	    System.out.println(toLength("Imbalance", 25)+toPercentage(fairNom/fairDenom, 1));
 	    System.out.println(toLength("Fairness * Weighted TPr", 25)+toPercentage(fairNom/fairDenom*eval.weightedTruePositiveRate(), 0));
 	    
 		java.awt.Toolkit.getDefaultToolkit().beep();

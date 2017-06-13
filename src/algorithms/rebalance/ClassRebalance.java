@@ -3,8 +3,10 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Random;
 
 import weka.classifiers.Classifier;
+import weka.classifiers.Evaluation;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.filters.Filter;
@@ -123,9 +125,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 			else if(options[i].startsWith("-reb")) {
 				i++;
 				tune = 0;
-				if(options[i].startsWith("tune2"))
-					tune = 2;
-				else if(options[i].startsWith("tune"))
+				if(options[i].startsWith("tune"))
 					tune = 1;
 				else
 					rebalanceParameter = Double.parseDouble(options[i]);
@@ -226,60 +226,65 @@ public class ClassRebalance extends Classifier implements Serializable {
 			if(tune==0)
 				System.out.println("Rebalance parameter     : "+rebalanceParameter);
 			else
-				System.out.print("Rebalance parameter     : TUNE"+(int)tune+" ");
+				System.out.print("Rebalance parameter     : TUNE ");
 		}
 		this.trainingInstances = trainingInstances;
 		//tune rebalance parameter
 		if(tune!=0)
-			performTuning(instances, -1+(tune-1), 1+(tune-1));
+			performTuning(instances, -1.5, 3, 1);
 	}
-	protected void performTuning(Instances trainingInstances, double minRebalanceParameter, double maxRebalanceParameter) throws Exception {
-		rebalanceParameter = (minRebalanceParameter+maxRebalanceParameter)/2;
-		double r = (-minRebalanceParameter+maxRebalanceParameter)/4;
-		int direction = 0;
-		double prevFairness = obtainFairness(trainingInstances, false);
-		while(true) {				
-			double r_sup = Math.min(Math.abs(minRebalanceParameter-rebalanceParameter), Math.abs(maxRebalanceParameter-rebalanceParameter));
-			double r_left = Math.min(r, r_sup)*(direction==-1?2:1)/2;
-			double r_right = Math.min(r, r_sup)*(direction==1?2:1)/2;
-			double nextLeft = rebalanceParameter-r_left;
-			double nextRight = rebalanceParameter+r_right;
-			double bias = (rebalanceParameter<0?-0.001:0.001)*r;
-			rebalanceParameter = nextLeft;
-			double leftFairness = obtainFairness(trainingInstances, false);
-			rebalanceParameter = nextRight;
-			double rightFairness = obtainFairness(trainingInstances, false);
-			//System.out.println("\nLeft fairness ("+nextLeft+"): "+leftFairness);
-			//System.out.println("Right fairness ("+nextRight+"): "+rightFairness);
-			if(leftFairness<rightFairness+bias && rightFairness+bias>=prevFairness) {
-				rebalanceParameter = nextRight;
-				r = r_right;
-				direction = 1;
-				prevFairness = rightFairness;
+	protected void performTuning(Instances trainingInstances, double minRebalanceParameter, double maxRebalanceParameter, int depth) throws Exception {
+		double bestParameter = 0;
+		double bestParameterFairness = 0;
+		double prevTune = tune;
+		boolean prevDebug = debug;
+		tune = 0;
+		debug = false;
+		Classifier previousClassifier = baseClassifier;
+		double step = (maxRebalanceParameter-minRebalanceParameter)/10;
+		for(double val=minRebalanceParameter;val<=maxRebalanceParameter;val+=step) {
+			rebalanceParameter = val;
+			double performance = 1;
+			double fairness = 0;
+			double fairnessDenom = 0;
+			if(!pretrained) {
+				Evaluation eval = new Evaluation(trainingInstances);
+				eval.crossValidateModel(this, trainingInstances, 3, new Random(1));
+				double[] priors = eval.getClassPriors();
+				for(int i=0;i<priors.length;i++) {
+					performance *= Math.pow(eval.truePositiveRate(i), 1.0/priors.length);
+					for(int j=0;j<priors.length;j++) 
+						if(i!=j){
+							fairness += priors[i]*priors[j]*eval.truePositiveRate(i)/eval.truePositiveRate(j);
+							fairnessDenom += priors[i]*priors[j];
+						}
+				}
+				fairness = fairnessDenom/fairness+performance;
 			}
-			else if(leftFairness>rightFairness+bias && leftFairness+bias>=prevFairness) {
-				rebalanceParameter = nextLeft;
-				r = r_left;
-				direction = -1;
-				prevFairness = leftFairness;
+			else
+				throw new RuntimeException("Cannot tune rebalance when using pretrained classifiers");
+			if(fairness>bestParameterFairness) {
+				bestParameterFairness = fairness;
+				bestParameter = val;
 			}
-			else //if(direction==0)
-				r /= 2;
-			//else 
-				//direction = 0;
-			if(/*Math.abs(leftFairness-rightFairness-rightFairnessOffset)<0.005 ||*/r<0.02 || rebalanceParameter>=maxRebalanceParameter || rebalanceParameter<=minRebalanceParameter)
-				break;
-			if(debug && deepDebug>=1)
-				System.out.print(rebalanceParameter+" ("+prevFairness+") ");
 		}
+		debug = prevDebug;
+		tune = prevTune;
+		baseClassifier = previousClassifier;
+		rebalanceParameter = bestParameter;
+		
+		
 		if(debug && deepDebug>=1)
-			System.out.print(rebalanceParameter+" ("+prevFairness+") ");
+			System.out.print(rebalanceParameter+" ("+bestParameterFairness+") ");
 		if(debug && deepDebug>=1)
-			System.out.print("\nIncreased fairness to   : "+prevFairness+" for parameter: ");
+			System.out.print("\nIncreased fairness to   : "+bestParameterFairness+" for parameter: ");
 		if(debug)
 			System.out.println(+rebalanceParameter);
+
+		if(depth>0)
+			performTuning(trainingInstances, rebalanceParameter-step, rebalanceParameter+step, depth-1);
 	}
-	protected double obtainFairness(Instances instances, boolean signed) throws Exception {
+	protected double obtainTrainingScore(Instances instances) throws Exception {
 		double[] TP = new double[instances.numClasses()];
 		double[] P = new double[instances.numClasses()];
 		for(int i=0;i<instances.numInstances();i++) {

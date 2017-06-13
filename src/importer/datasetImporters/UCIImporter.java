@@ -15,6 +15,7 @@ import weka.core.converters.ArffSaver;
 
 public class UCIImporter {
 	public static Instances importDatabase(String path, String[] classes, int classIndex) throws Exception {
+		
 		if((new File(path+".arff").exists())) {
 			Instances instances = importer.datasetImporters.ArffImporter.arffImporter(path+".arff");
 			instances.setClassIndex(0);
@@ -22,7 +23,7 @@ public class UCIImporter {
 		}
 		
 		
-		FastVector classValues = new FastVector(2);
+		FastVector classValues = new FastVector(classes.length);
 		for(String dimensionName : classes)
 			classValues.addElement(dimensionName);
 		int size = 0;

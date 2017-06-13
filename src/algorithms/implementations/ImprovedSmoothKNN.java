@@ -1,4 +1,4 @@
-package algorithms.implemtations;
+package algorithms.implementations;
 
 import java.io.Serializable;
 import java.util.ArrayList;

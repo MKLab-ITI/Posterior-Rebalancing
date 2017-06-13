@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import weka.core.Attribute;
@@ -13,13 +14,15 @@ import weka.core.Instances;
 import weka.core.converters.ArffSaver;
 
 public class DataImporter {
+	public static final boolean convertToImbalancedDataset = true;
 	public static Instances importDatabase(String path) throws Exception {
 		/*if((new File(path+".arff").exists())) {
 			Instances instances = importer.datasetImporters.ArffImporter.arffImporter(path+".arff");
 			instances.setClassIndex(0);
 			return instances;
 		}*/
-		HashMap <String, Integer> classes = new HashMap<String, Integer>();
+		HashMap <String, String> classes = new HashMap<String, String>();
+		HashMap <String, Integer> classFrequencies = new HashMap<String, Integer>();
 		int length = 0;
 		int size = 0;
 		int classIndex = -1;
@@ -34,14 +37,19 @@ public class DataImporter {
 					length = split.length;
 				if(classIndex<0)
 					classIndex = split.length+classIndex;
-				if(classes.get(split[classIndex])==null)
-					classes.put(split[classIndex], classes.size());
+				if(classes.get(split[classIndex])==null) {
+					classes.put(split[classIndex], split[classIndex]);
+					classFrequencies.put(split[classIndex], 1);
+				}
+				else
+					classFrequencies.put(split[classIndex], classFrequencies.get(split[classIndex])+1);
 				size++;
 			}
 			br.close();
 		}
 		if(classes.size()>30) {
 			classes.clear();
+			classFrequencies.clear();
 			classIndex = 0;
 			BufferedReader br = Files.newBufferedReader(Paths.get(new File(path).getPath()));
 			String line = null;
@@ -53,8 +61,12 @@ public class DataImporter {
 					length = split.length;
 				if(classIndex<0)
 					classIndex = split.length+classIndex;
-				if(classes.get(split[classIndex])==null)
-					classes.put(split[classIndex], classes.size());
+				if(classes.get(split[classIndex])==null) {
+					classes.put(split[classIndex], split[classIndex]);
+					classFrequencies.put(split[classIndex], 1);
+				}
+				else
+					classFrequencies.put(split[classIndex], classFrequencies.get(split[classIndex])+1);
 			}
 			br.close();
 			
@@ -62,10 +74,30 @@ public class DataImporter {
 		if(classes.size()>30)
 			throw new RuntimeException("Could not identify class attribute");
 		
-		
-		FastVector classValues = new FastVector(2);
-		for(String dimensionName : classes.keySet())
-			classValues.addElement(dimensionName);
+		FastVector classValues;
+		if(convertToImbalancedDataset) {
+			String minimumClass = "";
+			int minimumFrequency = Integer.MAX_VALUE;
+			for(String className : classes.keySet())
+				if(classFrequencies.get(className)<=minimumFrequency) {
+					minimumClass = className;
+					minimumFrequency = classFrequencies.get(className);
+				}
+			for(String className : new ArrayList<String>(classes.keySet())) {
+				if(className.equals(minimumClass))
+					classes.put(className, minimumClass);
+				else
+					classes.put(className, "other");
+			}
+			classValues = new FastVector(2);
+			classValues.addElement("other");
+			classValues.addElement(minimumClass);
+		}
+		else {
+			classValues = new FastVector(classes.size());
+			for(String dimensionName : classes.keySet())
+				classValues.addElement(dimensionName);
+		}
 
 		FastVector attributes  = new FastVector(length+1);
 		attributes.addElement(new Attribute(path, classValues));
@@ -107,12 +139,12 @@ public class DataImporter {
 						instance.setValue(i, w);
 				}
 				instance.setDataset(instances);
-				instance.setClassValue(split[classIndex]);
+				instance.setClassValue(classes.get(split[classIndex]));
 				instances.add(instance);
 			}
 			br.close();
 		}
-		System.out.println("Generated "+size+" instances with "+classes.size()+" classes (class attribute index: "+classIndex+")");
+		System.out.println("Generated "+size+" instances with "+classValues.size()+" classes (class attribute index: "+classIndex+")");
 		
 
 		ArffSaver saver = new ArffSaver();
