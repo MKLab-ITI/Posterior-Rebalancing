@@ -45,14 +45,17 @@ public class ExperimentScheme {
 			//classifier = new SmoothKNN(weka.core.Utils.splitOptions("-neighbors 5 -similarity dot -powSim 1 -powWeight 0"));
 		}
 		else if(baseClassifierType.contains("RUSBoost")){
-			classifier = new algorithms.implementations.RUSBoost(new weka.classifiers.functions.Logistic(),28);
+			classifier = new algorithms.implementations.Boosting.RUSBoost(new weka.classifiers.functions.Logistic(),28);
+		}
+		else if(baseClassifierType.contains("ClusterBoost")){
+			classifier = new algorithms.implementations.Boosting.ClusterBoost(new weka.classifiers.functions.Logistic());
 		}
 		else if(baseClassifierType.contains("KNN")){
 			classifier = new weka.classifiers.lazy.IBk(5);
 			classifier.setOptions(weka.core.Utils.splitOptions("-I"));
 		}
 		else if(baseClassifierType.contains("SVM")) {
-			classifier = new algorithms.implementations.LibSVMWrapper();
+			classifier = new algorithms.implementations.JLibSVMWrapper();
 			
 		}
 		else if(baseClassifierType.contains("SMO"))
@@ -93,11 +96,8 @@ public class ExperimentScheme {
 			ret += "-sensitive 0 ";
 			abbr = abbr.substring(1);
 		}
-		if(abbr.startsWith("tt")) {
-			ret += "-rebalance tune2 ";
-			abbr = abbr.substring(2);
-		}
-		else if(abbr.startsWith("t")) {
+		
+		if(abbr.startsWith("t") && !abbr.startsWith("th")) {
 			ret += "-rebalance tune ";
 			abbr = abbr.substring(1);
 		}
@@ -125,7 +125,7 @@ public class ExperimentScheme {
 		}
 		else
 			ret += "-dynamic none ";
-
+		
 		if(abbr.startsWith("inv")) {
 			ret += "-function inv ";
 			abbr = abbr.substring(3);
@@ -136,6 +136,10 @@ public class ExperimentScheme {
 		}
 		else if(abbr.startsWith("lin")){
 			ret += "-function lin ";
+			abbr = abbr.substring(3);
+		}
+		else if(abbr.startsWith("thr")){
+			ret += "-function threshold ";
 			abbr = abbr.substring(3);
 		}
 		else if(abbr.startsWith("log")){

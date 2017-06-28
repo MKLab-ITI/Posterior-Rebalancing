@@ -54,7 +54,7 @@ import weka.filters.Filter;
  */
 public class ClassRebalance extends Classifier implements Serializable {
 	private static final long serialVersionUID = -7184425438333439884L;
-	private static enum FunctionForm {none, linear, exponential, inverse, log};
+	private static enum FunctionForm {none, linear, exponential, inverse, log, thresholding};
 	private static enum PreprocessForm {none, resample, SMOTE};
 	private static enum DynamicForm {none, entropy, margin, max, cleanliness};
 	private double[] frequencies;
@@ -70,6 +70,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 	private double tune = 0;
 	private int deepDebug = 1;//level 1 debugs tuning, level 2 also debugs instances, level 0 does not print those things
 	private double sensitive = 0;
+	private int tuneFolds = 3;
 	public static boolean throtleBaseClassifierPrints = true;
 	
 	public ClassRebalance(Classifier baseClassifier, String[] options) throws Exception  {
@@ -100,6 +101,8 @@ public class ClassRebalance extends Classifier implements Serializable {
 				i++;
 				if(options[i].startsWith("exp"))
 					functionForm = FunctionForm.exponential;
+				else if(options[i].startsWith("thr"))
+					functionForm = FunctionForm.thresholding;
 				else if(options[i].startsWith("inv"))
 					functionForm = FunctionForm.inverse;
 				else if(options[i].startsWith("lin"))
@@ -191,7 +194,10 @@ public class ClassRebalance extends Classifier implements Serializable {
 		if(preprocessForm==PreprocessForm.resample) {
 			weka.filters.supervised.instance.Resample res = new weka.filters.supervised.instance.Resample();
 			res.setInputFormat(instances);
-			res.setSampleSizePercent(100);
+			if(maxFrequency/minFrequency<10)
+				res.setSampleSizePercent(50);
+			else
+				res.setSampleSizePercent(100);
 			res.setBiasToUniformClass(1);
 			trainingInstances = Filter.useFilter(trainingInstances, res);
 			double[] newFrequencies = DatasetMetrics.getPriors(trainingInstances);
@@ -205,6 +211,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 			res.setInputFormat(trainingInstances);
 			trainingInstances = Filter.useFilter(trainingInstances, res);
 		}
+		this.trainingInstances = trainingInstances;
 		//build base classifier
 		if(!pretrained) {
 			if(debug)
@@ -222,18 +229,22 @@ public class ClassRebalance extends Classifier implements Serializable {
 			else
 				baseClassifier.buildClassifier(trainingInstances);
 		}
+		else if(debug)
+			System.out.println("Pretrained base classifier: "+baseClassifier.getClass().getSimpleName());
 		if(debug) {
 			if(tune==0)
 				System.out.println("Rebalance parameter     : "+rebalanceParameter);
 			else
 				System.out.print("Rebalance parameter     : TUNE ");
 		}
-		this.trainingInstances = trainingInstances;
 		//tune rebalance parameter
-		if(tune!=0)
-			performTuning(instances, -1.5, 3, 1);
+		if(tune!=0) {
+			performTuning(instances, -2, 2, 2, tuneFolds);
+			if(debug)
+				System.out.println();
+		}
 	}
-	protected void performTuning(Instances trainingInstances, double minRebalanceParameter, double maxRebalanceParameter, int depth) throws Exception {
+	protected double performTuning(Instances trainingInstances, double minRebalanceParameter, double maxRebalanceParameter, int depth, int folds) throws Exception {
 		double bestParameter = 0;
 		double bestParameterFairness = 0;
 		double prevTune = tune;
@@ -247,19 +258,36 @@ public class ClassRebalance extends Classifier implements Serializable {
 			double performance = 1;
 			double fairness = 0;
 			double fairnessDenom = 0;
-			if(!pretrained) {
+			if(folds==1) {
 				Evaluation eval = new Evaluation(trainingInstances);
-				eval.crossValidateModel(this, trainingInstances, 3, new Random(1));
+				eval.evaluateModel(this,trainingInstances);
+				double[] priors = eval.getClassPriors();
+				//System.out.println("\nPerrformance for "+rebalanceParameter);
+				for(int i=0;i<priors.length;i++) {
+					performance *= Math.pow(eval.truePositiveRate(i), 1.0/priors.length);
+					//System.out.println("class "+trainingInstances.classAttribute().value(i)+" ("+eval.getClassPriors()[i]+") : "+eval.truePositiveRate(i));
+					for(int j=0;j<priors.length;j++) 
+						if(i!=j){
+							fairness += Math.abs(eval.truePositiveRate(i)-eval.truePositiveRate(j));
+							fairnessDenom += 1;
+						}
+				}
+				fairness = 0.2*(1-fairness/fairnessDenom)+performance;
+				//System.out.println("Overall: "+fairness);
+			}
+			else if(!pretrained) {
+				Evaluation eval = new Evaluation(trainingInstances);
+				eval.crossValidateModel(makeCopy(this), trainingInstances, folds, new Random(1));
 				double[] priors = eval.getClassPriors();
 				for(int i=0;i<priors.length;i++) {
 					performance *= Math.pow(eval.truePositiveRate(i), 1.0/priors.length);
 					for(int j=0;j<priors.length;j++) 
 						if(i!=j){
-							fairness += priors[i]*priors[j]*eval.truePositiveRate(i)/eval.truePositiveRate(j);
-							fairnessDenom += priors[i]*priors[j];
+							fairness += Math.abs(eval.truePositiveRate(i)-eval.truePositiveRate(j));
+							fairnessDenom += 1;
 						}
 				}
-				fairness = fairnessDenom/fairness+performance;
+				fairness = 0.2*(1-fairness/fairnessDenom)+performance;
 			}
 			else
 				throw new RuntimeException("Cannot tune rebalance when using pretrained classifiers");
@@ -274,15 +302,16 @@ public class ClassRebalance extends Classifier implements Serializable {
 		rebalanceParameter = bestParameter;
 		
 		
-		if(debug && deepDebug>=1)
+		if(debug && (deepDebug>=1 || depth==0))
 			System.out.print(rebalanceParameter+" ("+bestParameterFairness+") ");
-		if(debug && deepDebug>=1)
-			System.out.print("\nIncreased fairness to   : "+bestParameterFairness+" for parameter: ");
-		if(debug)
-			System.out.println(+rebalanceParameter);
+		//if(debug && deepDebug>=1)
+			//System.out.print("\nIncreased fairness to   : "+bestParameterFairness+" for parameter: ");
 
-		if(depth>0)
-			performTuning(trainingInstances, rebalanceParameter-step, rebalanceParameter+step, depth-1);
+		if(depth>0) {
+			double evalCurrent = performTuning(trainingInstances, rebalanceParameter-step, rebalanceParameter+step, depth-1, folds);
+		}
+		
+		return bestParameterFairness;
 	}
 	protected double obtainTrainingScore(Instances instances) throws Exception {
 		double[] TP = new double[instances.numClasses()];
@@ -321,11 +350,13 @@ public class ClassRebalance extends Classifier implements Serializable {
 		if(functionForm==FunctionForm.exponential)
 			return Math.pow(w, (1-positive)/2+positive*f);
 		else if(functionForm==FunctionForm.linear)
-			return Math.pow(w, 0.5) * ((1+positive)/2-positive*f);
+			return Math.pow(w, 1) * ((1+positive)/2-positive*f);
 		else if(functionForm==FunctionForm.log)
 			return Math.log(1+w)*((1+positive)/2-positive*f);
 		else if(functionForm==FunctionForm.inverse) 
 			return w * Math.pow(f==0?1:f, -positive);// /3.5
+		else if(functionForm==FunctionForm.thresholding)
+			return ((1+positive)-positive*f);
 		return w;
 	}
 	protected double rebalanceFunction(double f, double w, double positive, double rebalanceConstant) {

@@ -11,7 +11,7 @@ import weka.core.Instances;
 public class Main {
 	public static void main(String[] args) throws Exception {
 		//IMPORT INSTANCES
-		ExperimentScheme experimentSchema = new ExperimentScheme("Logistic", "", "Tinv");
+		ExperimentScheme experimentSchema = new ExperimentScheme("SVM", "", "DTlin");
 		int folds = 10;
 		//DatasetScheme databaseSchema = new DatasetScheme("sexuality", "myPersonality", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("religion", "myPersonality", folds);
@@ -24,23 +24,23 @@ public class Main {
 		//DatasetScheme databaseSchema = new DatasetScheme("cell", "UCI", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/dermatology.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/diabetes.arff", ".arff", folds);
-		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/ecoli.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/hepatitis.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/hypothyroid.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/liver-disorders.arff", ".arff", folds);
-		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/lung-cancer.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/lymph.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/thyroid/new-thyroid.data", ".data", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/abalone.data", ".data", folds);
 		
 		
 		//IMBALANCED DATASETS
-		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/ThoraricSurgery.arff", ".arff", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("sexuality", "myPersonality", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("religion", "myPersonality", folds);
+		DatasetScheme databaseSchema = new DatasetScheme("data/UCI/ThoraricSurgery.arff", ".arff", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/sick-euthyroid.data", ".data", folds);
-		DatasetScheme databaseSchema = new DatasetScheme("data/UCI/page-blocks.data", ".data", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/page-blocks.data", ".data", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/glass.data", ".data", folds);
 		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/yeast/yeast.data", ".data", folds);
-		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/	.arff", ".arff", folds);
-		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/abalone.data", ".data", folds);
+		//DatasetScheme databaseSchema = new DatasetScheme("data/UCI/Medical/lung-cancer.arff", ".arff", folds);
 		
 
 		//System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream("out\\"+databaseSchema.toString()+" "+experimentSchema.toString()+".txt")), true));
