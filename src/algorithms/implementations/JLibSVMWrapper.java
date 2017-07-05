@@ -46,7 +46,7 @@ public class JLibSVMWrapper extends Classifier implements Serializable {
 	    cSet.add(1.0f);
 
 	    kernelSet = new HashSet();
-	    kernelSet.add(new edu.berkeley.compbio.jlibsvm.kernel.GaussianRBFKernel(1));
+	    kernelSet.add(new edu.berkeley.compbio.jlibsvm.kernel.GaussianRBFKernel(1f));
 
 	    // configure finetuning parameters
 	    builder.eps = 0.001f; // epsilon
@@ -54,8 +54,6 @@ public class JLibSVMWrapper extends Classifier implements Serializable {
 	    builder.kernelSet = kernelSet; //Kernel used
 
 	    ImmutableSvmParameter params = builder.build();
-	    
-	    
 	    
 		if(instances.classAttribute().numValues()!=2)
 			throw new RuntimeException("Only binary problems supported");

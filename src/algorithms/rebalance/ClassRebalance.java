@@ -70,7 +70,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 	private double tune = 0;
 	private int deepDebug = 1;//level 1 debugs tuning, level 2 also debugs instances, level 0 does not print those things
 	private double sensitive = 0;
-	private int tuneFolds = 3;
+	private int tuneFolds = 1;
 	public static boolean throtleBaseClassifierPrints = true;
 	
 	public ClassRebalance(Classifier baseClassifier, String[] options) throws Exception  {
@@ -162,11 +162,16 @@ public class ClassRebalance extends Classifier implements Serializable {
 	}
 	public static double getImbalance(double[] frequencies) {
 		double imbalance = 0;
-		for(int i=0;i<frequencies.length;i++)
+		int count = 0;
+		for(int i=0;i<frequencies.length;i++) {
+			if(frequencies[i]==0)
+				continue;
+			count++;
 			for(int j=0;j<frequencies.length;j++)
-				if(i!=j)
+				if(i!=j && frequencies[j]!=0)
 					imbalance += frequencies[i]/frequencies[j];
-		imbalance /= frequencies.length/(frequencies.length-1);
+		}
+		imbalance /= count/(count-1);
 		return 2*imbalance;
 	}
 	private Instances trainingInstances;
@@ -239,7 +244,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 		}
 		//tune rebalance parameter
 		if(tune!=0) {
-			performTuning(instances, -2, 2, 2, tuneFolds);
+			performTuning(instances, 0, 3, 3, tuneFolds);
 			if(debug)
 				System.out.println();
 		}
@@ -247,6 +252,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 	protected double performTuning(Instances trainingInstances, double minRebalanceParameter, double maxRebalanceParameter, int depth, int folds) throws Exception {
 		double bestParameter = 0;
 		double bestParameterFairness = 0;
+		double worstParameterFairness = Double.POSITIVE_INFINITY;
 		double prevTune = tune;
 		boolean prevDebug = debug;
 		tune = 0;
@@ -272,7 +278,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 							fairnessDenom += 1;
 						}
 				}
-				fairness = 0.2*(1-fairness/fairnessDenom)+performance;
+				fairness = 0.5*(1-fairness/fairnessDenom)+performance;
 				//System.out.println("Overall: "+fairness);
 			}
 			else if(!pretrained) {
@@ -287,14 +293,16 @@ public class ClassRebalance extends Classifier implements Serializable {
 							fairnessDenom += 1;
 						}
 				}
-				fairness = 0.2*(1-fairness/fairnessDenom)+performance;
+				fairness = 0.5*(1-fairness/fairnessDenom)+performance;
 			}
 			else
 				throw new RuntimeException("Cannot tune rebalance when using pretrained classifiers");
-			if(fairness>bestParameterFairness) {
+			if(fairness>=bestParameterFairness){//-0.1*step) {
 				bestParameterFairness = fairness;
 				bestParameter = val;
 			}
+			if(fairness<worstParameterFairness)
+				worstParameterFairness = fairness;
 		}
 		debug = prevDebug;
 		tune = prevTune;
@@ -306,10 +314,8 @@ public class ClassRebalance extends Classifier implements Serializable {
 			System.out.print(rebalanceParameter+" ("+bestParameterFairness+") ");
 		//if(debug && deepDebug>=1)
 			//System.out.print("\nIncreased fairness to   : "+bestParameterFairness+" for parameter: ");
-
-		if(depth>0) {
-			double evalCurrent = performTuning(trainingInstances, rebalanceParameter-step, rebalanceParameter+step, depth-1, folds);
-		}
+		if(depth>0) 
+			return performTuning(trainingInstances, rebalanceParameter-step, rebalanceParameter+step, depth-1, folds);
 		
 		return bestParameterFairness;
 	}
@@ -341,7 +347,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 		else if(functionForm==FunctionForm.linear)
 			return ((1+positive)/2-positive*f);
 		else if(functionForm==FunctionForm.inverse) 
-			return Math.pow(f==0?1:f, -positive);// /3.5
+			return Math.pow(f==0?1:f, -positive/3.2);
 		else
 			throw new RuntimeException("Rebalance function derivative not implemented");
 		//return f;
@@ -356,7 +362,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 		else if(functionForm==FunctionForm.inverse) 
 			return w * Math.pow(f==0?1:f, -positive);// /3.5
 		else if(functionForm==FunctionForm.thresholding)
-			return ((1+positive)-positive*f);
+			return ((positive)-positive*f);
 		return w;
 	}
 	protected double rebalanceFunction(double f, double w, double positive, double rebalanceConstant) {

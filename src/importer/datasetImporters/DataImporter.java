@@ -15,6 +15,33 @@ import weka.core.converters.ArffSaver;
 
 public class DataImporter {
 	public static final boolean convertToImbalancedDataset = true;
+	
+	public static class StrToDoubleConverter {
+		private HashMap<String, Double> values = null;
+		public double convert(String str) {
+			if(values==null) {
+				try{
+					double ret = Double.parseDouble(str);
+					return ret;
+				}
+				catch(Exception e) {
+					values = new HashMap<String, Double>();
+					values.put(str, 0.0);
+					return 0;
+				}
+			}
+			else {
+				Double ret = values.get(str);
+				if(ret==null) {
+					ret = (double)values.size();
+					values.put(str, ret);
+				}
+				return (double)ret;
+			}
+			
+		}
+	}
+	
 	public static Instances importDatabase(String path) throws Exception {
 		/*if((new File(path+".arff").exists())) {
 			Instances instances = importer.datasetImporters.ArffImporter.arffImporter(path+".arff");
@@ -35,6 +62,8 @@ public class DataImporter {
 				String[] split = line.split("(\\s|\\,)+");
 				if(length==0)
 					length = split.length;
+				if(split.length<length)
+					break;
 				if(classIndex<0)
 					classIndex = split.length+classIndex;
 				if(classes.get(split[classIndex])==null) {
@@ -59,6 +88,8 @@ public class DataImporter {
 				String[] split = line.split("(\\s|\\,)+");
 				if(length==0)
 					length = split.length;
+				if(split.length<length)
+					break;
 				if(classIndex<0)
 					classIndex = split.length+classIndex;
 				if(classes.get(split[classIndex])==null) {
@@ -99,6 +130,9 @@ public class DataImporter {
 				classValues.addElement(dimensionName);
 		}
 
+		ArrayList<StrToDoubleConverter> converters = new ArrayList<StrToDoubleConverter>();
+		for(int i=0;i<length+1;i++)
+			converters.add(new StrToDoubleConverter());
 		FastVector attributes  = new FastVector(length+1);
 		attributes.addElement(new Attribute(path, classValues));
 		for(int i=0;i<length;i++)
@@ -112,12 +146,14 @@ public class DataImporter {
 			while((line=br.readLine())!=null) {
 				line = pending+line;
 				String[] split = line.split("(\\s|\\,)+");
+				if(split.length<length)
+					break;
 				Instance instance = new Instance(length);
 				for(int i=0;i<split.length;i++) {
 					if(i==classIndex)
 						continue;
 					double w = 0;
-					if(split[i].equalsIgnoreCase("m"))//male
+					/*if(split[i].equalsIgnoreCase("m"))//male
 						w = 1;
 					else if(split[i].equalsIgnoreCase("t"))//true
 						w = 1;
@@ -129,10 +165,10 @@ public class DataImporter {
 						w = 0;
 					else if(split[i].equalsIgnoreCase("i"))//for abalone dataset only
 						w = 2;
-					else if(split[i].isEmpty() || split[i].equals("?"))//unknown/empty attribute
+					else*/ if(split[i].isEmpty() || split[i].equals("?"))//unknown/empty attribute
 						w = 0;
 					else 
-						w = Double.parseDouble(split[i]);
+						w = converters.get(i).convert(split[i]);
 					if(i<classIndex) 
 						instance.setValue(i+1, w);
 					else if(i>classIndex)

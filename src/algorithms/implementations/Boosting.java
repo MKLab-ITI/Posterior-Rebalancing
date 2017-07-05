@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import algorithms.rebalance.ClassRebalance;
 import algorithms.rebalance.DatasetMetrics;
 import algorithms.rebalance.DeepCopy;
 import weka.classifiers.Classifier;
@@ -16,16 +17,15 @@ public abstract class Boosting extends Classifier implements Serializable {
 	private static final long serialVersionUID = -8058566690484220883L;
 	private Classifier [] classifiers;
 	private double [] classifierWeights;
-	private Classifier baseClassifierModel;
 	private int Tfinal;
 	
-	public Boosting(Classifier baseClassifierModel) {
-		this.baseClassifierModel = baseClassifierModel;
+	public Boosting() {
 	}
 	
 	public abstract Instances generateBoostDataset(Instances instances, int classifierId, int numberOfClassifiers) throws Exception;
 	public abstract boolean keepOnlyFavorableBoosts();
 	public abstract int calculateNumberOfClassifiers(Instances instances) throws Exception;
+	public abstract Classifier produceClassifier(int classifierId, int numberOfClassifiers) throws Exception;
 	
 	@Override
 	public final void buildClassifier(Instances instances) throws Exception {
@@ -36,7 +36,7 @@ public abstract class Boosting extends Classifier implements Serializable {
 		classifierWeights = new double[T];
 		classifiers = new Classifier[T];
 		for(int t=0;t<T;t++)
-			classifiers[t] = (Classifier)DeepCopy.copy(baseClassifierModel);
+			classifiers[t] = produceClassifier(t,T);
 		
 		//initialize sample weights
 		double[] sampleDistribution = new double[instances.numInstances()];
@@ -73,10 +73,11 @@ public abstract class Boosting extends Classifier implements Serializable {
 			double pseudoLoss = 0;
 			double maxPseudoLoss = 0;
 			double[] classifierErrors = new double[sampleDistribution.length];
+			
 			for(int i=0;i<classifierErrors.length;i++) {
-				int classifierEstimation = (int)classifyInstance(instances.instance(i));
+				int classifierEstimation = (int)classifier.classifyInstance(instances.instance(i));
+				double [] distribution = classifier.distributionForInstance(instances.instance(i));
 				int classValue = (int)instances.instance(i).classValue();
-				double [] distribution = distributionForInstance(instances.instance(i));
 				positives[classValue]++;
 				if(classifierEstimation==classValue) 
 					truePositives[classValue]++;
@@ -85,10 +86,14 @@ public abstract class Boosting extends Classifier implements Serializable {
 				pseudoLoss += sampleDistribution[i]*classifierErrors[i]*priors[classValue];
 				maxPseudoLoss += 2*sampleDistribution[i]*priors[classValue];
 			}
+			
 			Tfinal = prevTFinal;
 			double performance = 1;
 			for(int i=0;i<priors.length;i++)
 				performance *= Math.pow((double)truePositives[i]/positives[i], 1.0/priors.length);
+			//System.out.println("t="+t+" "+performance);
+			if(performance==0)
+				break;
 			
 			if(TfinalPerformance<performance || !keepOnlyFavorableBoosts()) {
 				Tfinal = t+1;
@@ -96,20 +101,19 @@ public abstract class Boosting extends Classifier implements Serializable {
 			}
 			{
 				pseudoLoss /= maxPseudoLoss;
+				if(pseudoLoss==0) {
+					for(int i=0;i<classifierWeights.length;i++)
+						classifierWeights[i] = 0;
+					classifierWeights[t] = 1;
+					break;
+				}
 				//System.out.println("loss "+pseudoLoss);
 				//update distribution
 				double updateParameter = pseudoLoss/(1-pseudoLoss);
 				for(int i=0;i<sampleDistribution.length;i++)
 					sampleDistribution[i] *= Math.pow(updateParameter, 1-0.5*classifierErrors[i]);
-				classifierWeights[t] = -Math.log(updateParameter);
+				classifierWeights[t] = -Math.log(updateParameter)*performance;
 			}
-		
-			//normalize distribution
-			double sum = 0;
-			for(double d : sampleDistribution)
-				sum += d;
-			for(int i=0;i<sampleDistribution.length;i++)
-				sampleDistribution[i] /= sum;
 		}
 		System.out.println("Number of boosts        : "+Tfinal);
 		System.out.println("Boosting weights        : "+Arrays.toString(classifierWeights));
@@ -148,13 +152,45 @@ public abstract class Boosting extends Classifier implements Serializable {
 	}
 	
 	
+	public static class RebalanceBoost extends Boosting {
+		private static final long serialVersionUID = 5091693448499798955L;
+		private int T;
+		private Classifier baseClassifierModel;
+		public RebalanceBoost(Classifier baseClassifierModel, int T) {
+			this.baseClassifierModel = baseClassifierModel;
+			this.T = T;
+		}
+		public Classifier produceClassifier(int classifierId, int numberOfClassifiers) throws Exception {
+			return new ClassRebalance((Classifier)DeepCopy.copy(baseClassifierModel), weka.core.Utils.splitOptions("-function lin -rebalance "+2*(double)classifierId/numberOfClassifiers));
+		}
+		@Override
+		public int calculateNumberOfClassifiers(Instances instances) {
+			return T;
+		}
+		@Override
+		public Instances generateBoostDataset(Instances instances, int classifierId, int numberOfClassifiers) throws Exception {
+			weka.filters.supervised.instance.SpreadSubsample res = new weka.filters.supervised.instance.SpreadSubsample();
+			res.setInputFormat(instances);
+			res.setDistributionSpread(5);//5 is optimal for thoratic
+			return Filter.useFilter(instances, res);
+		}
+		@Override
+		public boolean keepOnlyFavorableBoosts() {
+			return false;
+		}
+	}
+	
 	
 	public static class RUSBoost extends Boosting {
 		private static final long serialVersionUID = 5091693448499798955L;
 		private int T;
+		private Classifier baseClassifierModel;
 		public RUSBoost(Classifier baseClassifierModel, int T) {
-			super(baseClassifierModel);
+			this.baseClassifierModel = baseClassifierModel;
 			this.T = T;
+		}
+		public Classifier produceClassifier(int classifierId, int numberOfClassifiers) throws Exception {
+			return (Classifier)DeepCopy.copy(baseClassifierModel);
 		}
 		@Override
 		public int calculateNumberOfClassifiers(Instances instances) {
@@ -175,7 +211,7 @@ public abstract class Boosting extends Classifier implements Serializable {
 	
 	
 	
-	public static class ClusterBoost extends Boosting {
+	/*public static class ClusterBoost extends Boosting {
 		private static final long serialVersionUID = 2222702274438426399L;
 
 		public ClusterBoost(Classifier baseClassifierModel) {
@@ -309,5 +345,5 @@ public abstract class Boosting extends Classifier implements Serializable {
 			return true;
 		}
 		
-	}
+	}*/
 }

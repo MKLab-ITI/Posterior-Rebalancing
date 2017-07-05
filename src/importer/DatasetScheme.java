@@ -217,6 +217,19 @@ public class DatasetScheme {
 					i++;
 			}
 		}
+		/*if(instances.classAttribute().numValues()!=2) {
+			instances.renameAttributeValue(instances.classAttribute(), instances.classAttribute().value(0), "other");
+			instances.renameAttributeValue(instances.classAttribute(), instances.classAttribute().value(1), instances.classAttribute().value(instances.classAttribute().numValues()-1));
+			for(int i=0;i<instances.numInstances();i++)
+				if(instances.instance(i).classValue()<instances.classAttribute().numValues()-1)
+					instances.instance(i).setClassValue(0);
+				else
+					instances.instance(i).setClassValue(1);
+			for(int i=instances.classAttribute().numValues()-1;i>=2;i--)
+				instances.renameAttributeValue(instances.classAttribute(), instances.classAttribute().value(1), "empty");
+			
+			//instances.renameAttributeValue(instances.classAttribute(), instances.classAttribute().value(instances.classAttribute().numValues()-1), "0");
+		}*/
 		return instances;
 	}
 	

@@ -47,8 +47,8 @@ public class ExperimentScheme {
 		else if(baseClassifierType.contains("RUSBoost")){
 			classifier = new algorithms.implementations.Boosting.RUSBoost(new weka.classifiers.functions.Logistic(),28);
 		}
-		else if(baseClassifierType.contains("ClusterBoost")){
-			classifier = new algorithms.implementations.Boosting.ClusterBoost(new weka.classifiers.functions.Logistic());
+		else if(baseClassifierType.contains("RebBoost")){
+			classifier = new algorithms.implementations.Boosting.RebalanceBoost(new weka.classifiers.functions.Logistic(), 100);
 		}
 		else if(baseClassifierType.contains("KNN")){
 			classifier = new weka.classifiers.lazy.IBk(5);
@@ -66,7 +66,7 @@ public class ExperimentScheme {
 			classifier = new weka.classifiers.trees.J48();
 		else if(baseClassifierType.contains("Forest")) {
 			classifier = new weka.classifiers.trees.RandomForest();
-			((weka.classifiers.trees.RandomForest)classifier).setNumTrees(50);
+			((weka.classifiers.trees.RandomForest)classifier).setNumTrees(100);
 		}
 		else
 			throw new Exception("Unknown classifier scheme: "+baseClassifierType);
