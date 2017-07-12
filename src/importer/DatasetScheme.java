@@ -1,6 +1,7 @@
 package importer;
 import java.util.Random;
 
+import algorithms.rebalance.DatasetMetrics;
 import misc.DimensionReduction;
 import weka.core.Instances;
 import weka.filters.Filter;
@@ -287,5 +288,19 @@ public class DatasetScheme {
 	@Override
 	public String toString() {
 		return name;
+	}
+
+	public double measureImbalance() {
+		double[] frequencies = DatasetMetrics.getPriors(getAllTrainInstances());
+		if(frequencies.length!=2) {
+			double ret = 0;
+			for(int i=0;i<frequencies.length;i++)
+				for(int j=i+1;j<frequencies.length;j++)
+					ret += frequencies[i]/frequencies[j]+frequencies[j]/frequencies[i];
+			System.err.println("Heuristic imbalance measure for dataset "+toString());
+			return ret*2/frequencies.length/(frequencies.length-1);
+		}
+		else
+			return Math.max(frequencies[0]/frequencies[1], frequencies[1]/frequencies[0]);
 	}
 }

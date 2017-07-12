@@ -50,6 +50,10 @@ public class LatexResults {
 		datasets.add(new DatasetScheme("Thoratic Surgery", "data/UCI/ThoraricSurgery.arff", ".arff", folds));
 		datasets.add(new DatasetScheme("Yeast", "data/UCI/yeast.data", ".data", folds));
 		
+		for(DatasetScheme dataset : datasets) {
+			System.out.println(dataset.toString()+" imabalance: "+ dataset.measureImbalance());
+		}
+		
 		//System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream("out\\"+scheme+".txt")), true));
 		
 		//System.out.println(scheme+"\n");
