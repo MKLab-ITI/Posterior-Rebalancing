@@ -12,7 +12,7 @@ import weka.core.Instances;
 
 public class LatexResults {
 	public static ExperimentScheme baseScheme = new ExperimentScheme("Logistic", "", "0");
-	public static int experimentFamily = 3;
+	public static int experimentFamily = 1;
 	public static void main(String[] args) throws Exception {
 		int folds = 10;
 		
@@ -40,6 +40,23 @@ public class LatexResults {
 			algorithms.add(new ExperimentScheme("Logistic", "", "Tthr+SMOTE"));
 		}
 		ArrayList<DatasetScheme> datasets = new ArrayList<DatasetScheme>();
+
+		//datasets.add(new DatasetScheme("Boundary", "data/hddt/imbalanced/boundary.data", ".data", folds));
+		datasets.add(new DatasetScheme("Breast-Y", "data/hddt/imbalanced/breast-y.data", ".data", folds));
+		datasets.add(new DatasetScheme("Cam", "data/hddt/imbalanced/cam.data", ".data", folds));
+		datasets.add(new DatasetScheme("CompuStat", "data/hddt/imbalanced/compustat.data", ".data", folds));
+		datasets.add(new DatasetScheme("CovType", "data/hddt/imbalanced/covtype.data", ".data", folds));
+		datasets.add(new DatasetScheme("Credit-G", "data/hddt/imbalanced/credit-g.data", ".data", folds));
+		datasets.add(new DatasetScheme("Estate", "data/hddt/imbalanced/estate.data", ".data", folds));
+		datasets.add(new DatasetScheme("Heart-v", "data/hddt/imbalanced/heart-v.data", ".data", folds));
+		datasets.add(new DatasetScheme("Hypo", "data/hddt/imbalanced/hypo.data", ".data", folds));
+		datasets.add(new DatasetScheme("ISM", "data/hddt/imbalanced/ism.data", ".data", folds));
+		datasets.add(new DatasetScheme("Letter", "data/hddt/imbalanced/letter.data", ".data", folds));
+		datasets.add(new DatasetScheme("Oil", "data/hddt/imbalanced/oil.data", ".data", folds));
+		datasets.add(new DatasetScheme("Page", "data/hddt/imbalanced/page.data", ".data", folds));
+		datasets.add(new DatasetScheme("PenDigits", "data/hddt/imbalanced/pendigits.data", ".data", folds));
+		datasets.add(new DatasetScheme("Phoneme", "data/hddt/imbalanced/phoneme.data", ".data", folds));
+		
 		datasets.add(new DatasetScheme("Adult", "data/UCI/adult.data", ".data", folds));
 		datasets.add(new DatasetScheme("Car", "data/UCI/car.data", ".data", folds));
 		datasets.add(new DatasetScheme("Contraception", "data/UCI/cmc.data", ".data", folds));
