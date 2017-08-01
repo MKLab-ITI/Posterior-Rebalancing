@@ -47,6 +47,9 @@ public class ExperimentScheme {
 		else if(baseClassifierType.contains("RUSBoost")){
 			classifier = new algorithms.implementations.Boosting.RUSBoost(new weka.classifiers.functions.Logistic(),28);
 		}
+		else if(baseClassifierType.contains("Adapt")){
+			classifier = new algorithms.implementations.AdaptiveWeights(new weka.classifiers.functions.Logistic(), false);
+		}
 		else if(baseClassifierType.contains("RebBoost")){
 			classifier = new algorithms.implementations.Boosting.RebalanceBoost(new weka.classifiers.functions.Logistic(), 100);
 		}
@@ -60,8 +63,10 @@ public class ExperimentScheme {
 		}
 		else if(baseClassifierType.contains("SMO"))
 			classifier = new weka.classifiers.functions.SMO();
-		else if(baseClassifierType.contains("Logistic"))
+		else if(baseClassifierType.contains("Logistic")) {
 			classifier = new weka.classifiers.functions.Logistic();
+			//System.out.println("Ridge: "+((weka.classifiers.functions.Logistic)classifier).getRidge());
+		}
 		else if(baseClassifierType.contains("Tree"))
 			classifier = new weka.classifiers.trees.J48();
 		else if(baseClassifierType.contains("Forest")) {
@@ -140,6 +145,10 @@ public class ExperimentScheme {
 		}
 		else if(abbr.startsWith("thr")){
 			ret += "-function threshold ";
+			abbr = abbr.substring(3);
+		}
+		else if(abbr.startsWith("ada")){
+			ret += "-function adaptive ";
 			abbr = abbr.substring(3);
 		}
 		else if(abbr.startsWith("log")){

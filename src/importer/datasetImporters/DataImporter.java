@@ -14,7 +14,7 @@ import weka.core.Instances;
 import weka.core.converters.ArffSaver;
 
 public class DataImporter {
-	public static final boolean convertToImbalancedDataset = true;
+	public static boolean convertToBinaryDataset = false;
 	
 	public static class StrToDoubleConverter {
 		private HashMap<String, Double> values = null;
@@ -106,7 +106,7 @@ public class DataImporter {
 			throw new RuntimeException("Could not identify class attribute");
 		
 		FastVector classValues;
-		if(convertToImbalancedDataset) {
+		if(convertToBinaryDataset) {
 			String minimumClass = "";
 			int minimumFrequency = Integer.MAX_VALUE;
 			for(String className : classes.keySet())

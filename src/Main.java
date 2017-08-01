@@ -16,7 +16,7 @@ import weka.gui.visualize.ThresholdVisualizePanel;
 public class Main {
 	public static void main(String[] args) throws Exception {
 		//IMPORT INSTANCES
-		ExperimentScheme experimentSchema = new ExperimentScheme("Logistic", "", "DTthr");
+		ExperimentScheme experimentSchema = new ExperimentScheme("Adaptive", "", "0+Sample");
 		int folds = 10;
 		
 		//OTHER DATASETS

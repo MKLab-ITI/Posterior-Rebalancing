@@ -54,7 +54,7 @@ import weka.filters.Filter;
  */
 public class ClassRebalance extends Classifier implements Serializable {
 	private static final long serialVersionUID = -7184425438333439884L;
-	private static enum FunctionForm {none, linear, exponential, inverse, log, thresholding};
+	private static enum FunctionForm {none, linear, exponential, inverse, log, thresholding, adaptive};
 	private static enum PreprocessForm {none, resample, SMOTE};
 	private static enum DynamicForm {none, entropy, margin, max, cleanliness};
 	private double[] frequencies;
@@ -103,6 +103,8 @@ public class ClassRebalance extends Classifier implements Serializable {
 					functionForm = FunctionForm.exponential;
 				else if(options[i].startsWith("thr"))
 					functionForm = FunctionForm.thresholding;
+				else if(options[i].startsWith("ada"))
+					functionForm = FunctionForm.adaptive;
 				else if(options[i].startsWith("inv"))
 					functionForm = FunctionForm.inverse;
 				else if(options[i].startsWith("lin"))
@@ -244,12 +246,15 @@ public class ClassRebalance extends Classifier implements Serializable {
 		}
 		//tune rebalance parameter
 		if(tune!=0) {
-			performTuning(instances, 0, 3, 3, tuneFolds);
+			if(functionForm==FunctionForm.adaptive)
+				performTuning(instances, 0, 200, 3, tuneFolds, 0.5);
+			else
+				performTuning(instances, 0, 3, 3, tuneFolds, 0.5);
 			if(debug)
 				System.out.println();
 		}
 	}
-	protected double performTuning(Instances trainingInstances, double minRebalanceParameter, double maxRebalanceParameter, int depth, int folds) throws Exception {
+	protected double performTuning(Instances trainingInstances, double minRebalanceParameter, double maxRebalanceParameter, int depth, int folds, double fairnessImportance) throws Exception {
 		double bestParameter = 0;
 		double bestParameterFairness = 0;
 		double worstParameterFairness = Double.POSITIVE_INFINITY;
@@ -278,7 +283,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 							fairnessDenom += 1;
 						}
 				}
-				fairness = 0.5*(1-fairness/fairnessDenom)+performance;
+				fairness = fairnessImportance*(1-fairness/fairnessDenom)+performance;
 				//System.out.println("Overall: "+fairness);
 			}
 			else if(!pretrained) {
@@ -315,7 +320,7 @@ public class ClassRebalance extends Classifier implements Serializable {
 		//if(debug && deepDebug>=1)
 			//System.out.print("\nIncreased fairness to   : "+bestParameterFairness+" for parameter: ");
 		if(depth>0) 
-			return performTuning(trainingInstances, rebalanceParameter-step, rebalanceParameter+step, depth-1, folds);
+			return performTuning(trainingInstances, rebalanceParameter-step, rebalanceParameter+step, depth-1, folds, fairnessImportance);
 		
 		return bestParameterFairness;
 	}
@@ -363,9 +368,29 @@ public class ClassRebalance extends Classifier implements Serializable {
 			return w * Math.pow(f==0?1:f, -positive);// /3.5
 		else if(functionForm==FunctionForm.thresholding)
 			return ((positive)-positive*f);
+		else if(functionForm==FunctionForm.adaptive) {
+			throw new RuntimeException("Cannot calculate rebalance function for adaptive thresholding");
+		}
 		return w;
 	}
 	protected double rebalanceFunction(double f, double w, double positive, double rebalanceConstant) {
+		if(functionForm==FunctionForm.adaptive) {
+			if(f==maxFrequency)
+				return rebalanceConstant*w;
+			else if(f==minFrequency)
+				return maxFrequency/minFrequency*w;
+			else
+				throw new RuntimeException("Adaptive thresholding implemented only for binary classifications");
+		}
+		/*if(functionForm==FunctionForm.adaptive) {
+			if(f==maxFrequency)
+				return ((1-rebalanceConstant)*positive+(1-positive)*rebalanceConstant)*w;
+			else if(f==minFrequency)
+				return ((1-rebalanceConstant)*(1-positive)+positive*rebalanceConstant)*w;
+			else
+				throw new RuntimeException("Adaptive thresholding implemented only for binary classifications");
+		}*/
+		
 		if(dynamicForm==DynamicForm.max) 
 			rebalanceConstant = rebalanceConstant/rebalanceDerivativeT(maxFrequency, 1, 1);
 		//else
