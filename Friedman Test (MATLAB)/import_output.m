@@ -24,10 +24,16 @@ function [A line_names]=import_output(file_name,start_line)
         line = strrep(line, '%', '');
         line = strrep(line, '\textbf{', '');
         line = strrep(line, '}', '');
-        line_content = textscan(line,'%s%d%d%d%d%d%d%d%d%d%d%d%d','Delimiter','&');
-        line_names{current_line_id} = line_content{1};
-        for i=2:length(line_content)
-            A(current_line_id,i-1) = line_content{i}; 
+        %validate if textscan delimiter is present enough times
+        if(length(strfind(line,'&'))>=12)
+            line_content = textscan(line,'%s%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f','Delimiter','&');
+            line_names{current_line_id} = line_content{1};
+            for i=2:length(line_content)
+                A(current_line_id,i-1) = line_content{i}; 
+            end
+        elseif(size(A,2)>0)
+            A(current_line_id,:) = zeros(1,size(A,2));
+            line_content{current_line_id} = '';
         end
     end
     fclose(fid);
