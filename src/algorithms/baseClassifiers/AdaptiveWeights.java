@@ -1,4 +1,4 @@
-package algorithms.implementations;
+package algorithms.baseClassifiers;
 
 import java.util.Arrays;
 

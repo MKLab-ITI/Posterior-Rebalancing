@@ -1,4 +1,4 @@
-package importer.datasetImporters;
+package importer;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -9,7 +9,7 @@ import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
 
-public class MyPersonalityImporter {
+class MyPersonalityImporter {
 	protected static int countLines(File file) throws Exception {
 		int count = 0;
 		BufferedReader br = new BufferedReader(new FileReader(file.getPath()));

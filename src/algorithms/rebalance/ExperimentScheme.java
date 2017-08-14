@@ -1,7 +1,6 @@
 package algorithms.rebalance;
-import algorithms.implementations.ImprovedSmoothKNN;
+import algorithms.baseClassifiers.ImprovedSmoothKNN;
 import weka.classifiers.Classifier;
-import weka.classifiers.functions.LibSVM;
 
 /**
  * <h1>ExperimentScheme</h1>
@@ -45,20 +44,20 @@ public class ExperimentScheme {
 			//classifier = new SmoothKNN(weka.core.Utils.splitOptions("-neighbors 5 -similarity dot -powSim 1 -powWeight 0"));
 		}
 		else if(baseClassifierType.contains("RUSBoost")){
-			classifier = new algorithms.implementations.Boosting.RUSBoost(new weka.classifiers.functions.Logistic(),28);
+			classifier = new algorithms.baseClassifiers.Boosting.RUSBoost(new weka.classifiers.functions.Logistic(),28);
 		}
 		else if(baseClassifierType.contains("Adapt")){
-			classifier = new algorithms.implementations.AdaptiveWeights(new weka.classifiers.functions.Logistic(), false);
+			classifier = new algorithms.baseClassifiers.AdaptiveWeights(new weka.classifiers.functions.Logistic(), false);
 		}
 		else if(baseClassifierType.contains("RebBoost")){
-			classifier = new algorithms.implementations.Boosting.RebalanceBoost(new weka.classifiers.functions.Logistic(), 100);
+			classifier = new algorithms.baseClassifiers.Boosting.RebalanceBoost(new weka.classifiers.functions.Logistic(), 100);
 		}
 		else if(baseClassifierType.contains("KNN")){
 			classifier = new weka.classifiers.lazy.IBk(5);
 			classifier.setOptions(weka.core.Utils.splitOptions("-I"));
 		}
 		else if(baseClassifierType.contains("SVM")) {
-			classifier = new algorithms.implementations.JLibSVMWrapper();
+			classifier = new algorithms.baseClassifiers.JLibSVMWrapper();
 			
 		}
 		else if(baseClassifierType.contains("SMO"))
