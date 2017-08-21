@@ -1,4 +1,4 @@
-package importer.datasetImporters;
+package importer;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -13,9 +13,7 @@ import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ArffSaver;
 
-public class DataImporter {
-	public static boolean convertToBinaryDataset = false;
-	
+class DataImporter {	
 	public static class StrToDoubleConverter {
 		private HashMap<String, Double> values = null;
 		public double convert(String str) {
@@ -42,7 +40,7 @@ public class DataImporter {
 		}
 	}
 	
-	public static Instances importDatabase(String path) throws Exception {
+	public static Instances importDatabase(String path, boolean convertToBinaryDataset) throws Exception {
 		/*if((new File(path+".arff").exists())) {
 			Instances instances = importer.datasetImporters.ArffImporter.arffImporter(path+".arff");
 			instances.setClassIndex(0);
@@ -180,7 +178,7 @@ public class DataImporter {
 			}
 			br.close();
 		}
-		System.out.println("Generated "+size+" instances with "+classValues.size()+" classes (class attribute index: "+classIndex+")");
+		//System.out.println("Generated "+size+" instances with "+classValues.size()+" classes (class attribute index: "+classIndex+")");
 		
 
 		ArffSaver saver = new ArffSaver();

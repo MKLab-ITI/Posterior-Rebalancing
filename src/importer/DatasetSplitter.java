@@ -11,7 +11,7 @@ import weka.core.Instances;
  * training and test counterparts, according to a specified fraction.
  * @author Krasanakis Emmanouil
  */
-public class DatasetSplitter {
+class DatasetSplitter {
 	private Instances trainingSet;
 	private Instances testSet;
 	/**

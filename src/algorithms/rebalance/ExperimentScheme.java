@@ -1,15 +1,14 @@
 package algorithms.rebalance;
-import algorithms.implementations.ImprovedSmoothKNN;
+import algorithms.baseClassifiers.ImprovedSmoothKNN;
 import weka.classifiers.Classifier;
-import weka.classifiers.functions.LibSVM;
 
 /**
  * <h1>ExperimentScheme</h1>
  * This class is used to produce classifiers according to required scheme options. In particular, it is used
- * to wrap a rebalance scheme of {@link algorithms.rebalance.ClassRebalance} arround a base classifier.
+ * to wrap {@link algorithms.rebalance.ClassRebalance} around a base classifier of choice.
  * 
  * @see #produceClassifier()
- * @author Krasanakis Emmanouil
+ * @author Emmanouil Krasanakis
  */
 public class ExperimentScheme {
 	private String baseClassifierType, baseClassifierOptions;
@@ -45,20 +44,17 @@ public class ExperimentScheme {
 			//classifier = new SmoothKNN(weka.core.Utils.splitOptions("-neighbors 5 -similarity dot -powSim 1 -powWeight 0"));
 		}
 		else if(baseClassifierType.contains("RUSBoost")){
-			classifier = new algorithms.implementations.Boosting.RUSBoost(new weka.classifiers.functions.Logistic(),28);
-		}
-		else if(baseClassifierType.contains("Adapt")){
-			classifier = new algorithms.implementations.AdaptiveWeights(new weka.classifiers.functions.Logistic(), false);
+			classifier = new algorithms.rebalance.Boosting.RUSBoost(new weka.classifiers.functions.Logistic(),28);
 		}
 		else if(baseClassifierType.contains("RebBoost")){
-			classifier = new algorithms.implementations.Boosting.RebalanceBoost(new weka.classifiers.functions.Logistic(), 100);
+			classifier = new algorithms.rebalance.Boosting.RebalanceBoost(new weka.classifiers.functions.Logistic(), 100);
 		}
 		else if(baseClassifierType.contains("KNN")){
 			classifier = new weka.classifiers.lazy.IBk(5);
 			classifier.setOptions(weka.core.Utils.splitOptions("-I"));
 		}
 		else if(baseClassifierType.contains("SVM")) {
-			classifier = new algorithms.implementations.JLibSVMWrapper();
+			classifier = new algorithms.baseClassifiers.JLibSVMWrapper();
 			
 		}
 		else if(baseClassifierType.contains("SMO"))

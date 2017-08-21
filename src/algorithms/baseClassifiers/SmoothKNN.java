@@ -1,4 +1,4 @@
-package algorithms.implementations;
+package algorithms.baseClassifiers;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,7 +32,7 @@ import weka.core.Instances;
  * as the multiplication of their informativeness (i.e. <code>-log(1-e)*e</code> with Euclidean probability e)
  * for informativeness similarity.
  * 
- * @author Krasanakis Emmanouil
+ * @author Emmanouil Krasanakis
  */
 public class SmoothKNN extends Classifier implements Serializable {
 	private static final long serialVersionUID = 829246676038627545L;

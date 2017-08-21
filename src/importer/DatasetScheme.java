@@ -1,12 +1,10 @@
 package importer;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.util.Random;
 
 import algorithms.rebalance.DatasetMetrics;
-import misc.DimensionReduction;
 import weka.core.Instances;
-import weka.filters.Filter;
-import weka.filters.unsupervised.attribute.Remove;
-import weka.filters.unsupervised.attribute.StringToNominal;
 
 /**
  * <h1>DatasetScheme</h1>
@@ -23,98 +21,37 @@ import weka.filters.unsupervised.attribute.StringToNominal;
  */
 public class DatasetScheme {
 	public long randomSeed = 1;//used to randomize the dataset.
-	protected double heuristicCrossValidiationSplit = 0;//when 0, use weka instead
 	protected int folds;
 	protected Instances instances;
-	protected Instances trainInstances;
-	public static boolean debug = true;
 	private Instances nextTrainSet;
 	private Instances nextTestSet;
 	private String name;
+	protected double baggingSplit;//when 0, use cross-validation instead
 	
 
-	/**
-	 * Calls the {@link #DatasetScheme(String, String, String, String, int, double)} constructor using the most
-	 * common settings for simple evaluation tasks.
-	 * @param name a custom dataset name
-	 * @param attribute class attribute name
-	 * @param testDataset dataset name or path, as required by {@link #importDataset(String, String)}
-	 * @param folds the number of cross-validation folds
-	 * @throws Exception
-	 */
-	public DatasetScheme(String name, String attribute, String dataset, int folds) throws Exception {
-		this(attribute, dataset, attribute, dataset, folds, 0);
-		this.name = name;
+	public DatasetScheme(String path, String dataType, int folds, boolean convertToBinaryIfPossible) throws Exception {
+		this("", path, dataType, folds, 0, true);
 	}
 	
-	/**
-	 * Calls the {@link #DatasetScheme(String, String, String, String, int, double)} constructor using the most
-	 * common settings for simple evaluation tasks.
-	 * @param name custom dataset name
-	 * @param attribute class attribute name
-	 * @param testDataset dataset name or path, as required by {@link #importDataset(String, String)}
-	 * @param folds the number of cross-validation folds
-	 * @throws Exception
-	 */
-	public DatasetScheme(String attribute, String dataset, int folds) throws Exception {
-		this(attribute, dataset, attribute, dataset, folds, 0);
+	public DatasetScheme(String name, String path, String dataType, int folds, boolean convertToBinaryIfPossible) throws Exception {
+		this(name, path, dataType, folds, 0, true);
 	}
-	/**
-	 * This constructor is used to generate complex dataset schemes.
-	 * @param attribute class attribute name for the evaluation dataset
-	 * @param testDataset the evaluation dataset's name or path, as required by {@link #importDataset(String, String)}
-	 * @param trainAttribute the class attribute name for the training dataset
-	 * @param trainDataset the training dataset's name or path, as required by {@link #importDataset(String, String)}. 
-	 * 			If not the same as evaluation dataset, {@link Compliance} is used to forcefully match the datasets. 
-	 * @param folds the number of cross-validation folds
-	 * @param heuristicCrossValidiationSplit 0 uses Weka cross validation, otherwise performs heuristic cross-validation split
-	 * 			using the {@link 
-	 * @throws Exception
-	 */
-	public DatasetScheme(String attribute, String testDataset, String trainAttribute, String trainDataset, int folds, double heuristicCrossValidiationSplit) throws Exception {
+
+	public DatasetScheme(String name, String path, String dataType, int folds, double baggingSplit, boolean convertToBinaryIfPossible) throws Exception {
 		this.folds = folds;
-		this.heuristicCrossValidiationSplit = heuristicCrossValidiationSplit;
-		if(trainDataset.isEmpty())
-			trainDataset = testDataset;
-		if(trainAttribute.isEmpty())
-			trainAttribute = attribute;
-		if(debug) {
-			System.out.println("Generating dataset schema for "+folds+" folds:");
-			System.out.print("\tImporting instances ("+attribute+" @ "+testDataset+") .. ");
-		}
-		instances = importDataset(attribute, testDataset);
-		if(debug)
-			System.out.println("FIN ("+instances.numInstances()+" instances, "+(instances.numAttributes()-1)+" features)");
-
-		if(!trainDataset.equals(testDataset) || !trainAttribute.equals(attribute)) {
-			if(debug)
-				System.out.print("\tImporting train instances ("+trainAttribute+" @ "+trainDataset+") .. ");
-			if(folds!=1) 
-				throw new Exception("Must have only a single fold when producing dataset correlation");
-			trainInstances = importDataset(trainAttribute, trainDataset);
-			if(debug)
-				System.out.println("FIN");
-		}
-		else
-			trainInstances = instances;
+		this.baggingSplit = baggingSplit;
+		instances = importDataset(path, dataType, convertToBinaryIfPossible, true);
+		this.name = name.isEmpty()?instances.classAttribute().name().replace("/", "_").replace("\\", "_"):name;
+		System.out.println(this.name+": "
+				+instances.numInstances()+" instances, "
+				+(instances.numAttributes()-1)+" features, "
+				+instances.numClasses()+" classes, "
+				+Math.round(100*measureImbalance())/100.0+" imbalance");
 		
-		if(instances!=trainInstances) {
-			if(debug)
-				System.out.print("\tCreating compliance .. ");
-			instances = DimensionReduction.reduce(instances, 1000);
-			trainInstances = DimensionReduction.reduce(trainInstances, 1000);
-			
-			//Transformer transformer = new Transformer();
-			//transformer.split(instances, 0.8);
-			trainInstances = Compliance.compliantInstances(trainInstances, instances);//transformer.getTraining());
-			if(debug)
-				System.out.println("FIN");
-		}
 		instances.randomize(new Random(randomSeed));
-		if(heuristicCrossValidiationSplit!=0 && folds>1)
+		if(baggingSplit!=0 && folds>1)
 			instances.stratify(folds);
 		
-		name = getAllTrainInstances().classAttribute().name().replace("/", "_").replace("\\", "_");
 	}
 	/**
 	 * <h1>getFolds</h1>
@@ -124,14 +61,6 @@ public class DatasetScheme {
 		return folds;
 	}
 	/**
-	 * <h1>getAllTrainInstances</h1>
-	 * @return the whole set out of which training instances are extracted by{@link #produceNextSets},
-	 * as a {@link weka.core.Instances} object
-	 */
-	public Instances getAllTrainInstances() {
-		return trainInstances;
-	}
-	/**
 	 * <h1>getAllTestInstances</h1>
 	 * @return the whole set out of which test (i.e. evaluation) instances are extracted by{@link #produceNextSets},
 	 * as a {@link weka.core.Instances} object
@@ -139,76 +68,24 @@ public class DatasetScheme {
 	public Instances getAllTestInstances() {
 		return instances;
 	}
-	/**
-	 * <h1>importDataset</h1>
-	 * This static function is used to import a single dataset.<br/>
-	 * <i>myPersonality</i>, <i>USEMP</i> and <i>UCI</i> datasets are heuristically imported using the appropriate class
-	 * from the {@link importer.datasetImporters} package. <code>.arff</code> files are directly imported through their path.
-	 * @param attribute a substring of the class attribute in the dataset (<code>.arff</code> files are pressumed to have their last attribute being their class instead)
-	 * @param dataset either the path of an <code>.arff</code> file or "myPersonality", "USEMP250" or "UCI"
-	 * @return
-	 * @throws Exception
-	 */
-	public static Instances importDataset(String attribute, String dataset) throws Exception {
+	
+	public static Instances importDataset(String path, String dataType, boolean convertToBinaryIfPossible, boolean deleteMissingClassInstances) throws Exception {
 		Instances instances = null;
-		if(attribute.toLowerCase().endsWith(".arff")) 
-			instances = importer.datasetImporters.ArffImporter.arffImporter(attribute);
-		else if(dataset.toLowerCase().contains("mypersonality"))  
-			instances = importer.datasetImporters.MyPersonalityImporter.importLDA("data/myPersonality/"+attribute+"/");
-		else if(dataset.toLowerCase().contains("usemp250")) {
-			attribute = attribute.toLowerCase();
-			instances = importer.datasetImporters.ArffImporter.arffImporter("data/usemp250/LDA_ml_100_glo-L2.arff");
-			//keep only needed attributes
-			Remove remove = new Remove();
-			String removeRangeList = "";
-			for(int i=0;i<instances.numAttributes();i++)
-				if(!instances.attribute(i).toString().startsWith("LDA") && instances.attribute(i).toString().toLowerCase().contains(attribute)) {
-					if(!removeRangeList.isEmpty())
-						removeRangeList += ",";
-					removeRangeList += i;
-				}
-			remove.setAttributeIndices(removeRangeList);
-			remove.setInputFormat(instances);
-			instances = Filter.useFilter(instances, remove);
-			//convert string attributes to nominal attributes
-			String stringAttributes = "";
-			for(int i=0;i<instances.numAttributes();i++)
-				if(!instances.attribute(i).isString()) {
-					if(!stringAttributes.isEmpty())
-						stringAttributes += ",";
-					stringAttributes += i;
-				} 
-			if(!stringAttributes.isEmpty()) {
-				StringToNominal stringToNominal = new StringToNominal();
-				stringToNominal.setAttributeRange(stringAttributes);
-				stringToNominal.setInputFormat(instances);
-				instances = Filter.useFilter(instances, stringToNominal);
-			}
-			int classAttr = -1;
-			for(int i=0;i<instances.numAttributes();i++)
-				if(instances.attribute(i).toString().toLowerCase().contains(attribute))
-					classAttr = i;
-			if(classAttr==-1)
-				throw new Exception("Could not find attribute "+attribute+" in dataset");
-			instances.setClassIndex(classAttr);
+		if(dataType.toLowerCase().contains(".arff")) {
+			BufferedReader reader = new BufferedReader(new FileReader(path));
+			Instances data = new Instances(reader);
+			reader.close();
+			data.setClassIndex(data.numAttributes() - 1);
+			return data;
 		}
-		else if(dataset.toLowerCase().contains("usemp"))
-			instances = importer.datasetImporters.USEMPImporter.importDatabase("data/usemp/", attribute);
-		else if(dataset.contains(".data")) {
-			instances = importer.datasetImporters.DataImporter.importDatabase(attribute);
-		}
-		else if(dataset.contains("UCI")) {
-			if(attribute.contains("spam")) {
-				String[] classes = {"ham", "spam"};
-				instances = importer.datasetImporters.UCIImporter.importDatabase("data/UCI/smsspamcollection/SMSSpamCollection", classes, 0);
-			}
-			else if(attribute.contains("cell")) {
-				String[] classes = {"0", "1"};
-				instances = importer.datasetImporters.UCIImporter.importDatabase("data/UCI/sentiment labelled sentences/amazon_cells_labelled.txt", classes, -1);
-			}
+		else if(dataType.toLowerCase().contains("mypersonality"))  
+			instances = importer.MyPersonalityImporter.importLDA("data/myPersonality/"+path+"/");
+		else if(dataType.contains(".data")) {
+			instances = importer.DataImporter.importDatabase(path, convertToBinaryIfPossible);
 		}
 		if(instances==null)
-			throw new Exception("Dataset "+dataset+" does not support attribute: "+attribute);
+			throw new Exception("Dataset "+dataType+" does not support path or attribute: "+path);
+		if(deleteMissingClassInstances)
 		{
 			int i = 0;
 			while(i<instances.numInstances()) {
@@ -218,19 +95,6 @@ public class DatasetScheme {
 					i++;
 			}
 		}
-		/*if(instances.classAttribute().numValues()!=2) {
-			instances.renameAttributeValue(instances.classAttribute(), instances.classAttribute().value(0), "other");
-			instances.renameAttributeValue(instances.classAttribute(), instances.classAttribute().value(1), instances.classAttribute().value(instances.classAttribute().numValues()-1));
-			for(int i=0;i<instances.numInstances();i++)
-				if(instances.instance(i).classValue()<instances.classAttribute().numValues()-1)
-					instances.instance(i).setClassValue(0);
-				else
-					instances.instance(i).setClassValue(1);
-			for(int i=instances.classAttribute().numValues()-1;i>=2;i--)
-				instances.renameAttributeValue(instances.classAttribute(), instances.classAttribute().value(1), "empty");
-			
-			//instances.renameAttributeValue(instances.classAttribute(), instances.classAttribute().value(instances.classAttribute().numValues()-1), "0");
-		}*/
 		return instances;
 	}
 	
@@ -244,24 +108,21 @@ public class DatasetScheme {
 	 * @see #getTestSet()
 	 */
 	public void produceNextSets(int fold) throws Exception {
-		if(folds<=1 && trainInstances!=instances) {
-			nextTrainSet = trainInstances;
-			nextTestSet = instances;
-		}
-		else if(heuristicCrossValidiationSplit!=0) {
+		if(baggingSplit!=0) {
 			instances.randomize(new Random((long)(1000*Math.random())));
-			DatasetSplitter transformer = new DatasetSplitter();
-			transformer.split(instances, heuristicCrossValidiationSplit);
-			nextTrainSet = transformer.getTraining();
-			nextTestSet = transformer.getTest();
+			DatasetSplitter splitter = new DatasetSplitter();
+			splitter.split(instances, baggingSplit);
+			nextTrainSet = splitter.getTraining();
+			nextTestSet = splitter.getTest();
 		}
 		else if (folds>1) {
 			nextTrainSet = instances.trainCV(folds, fold);
 			nextTestSet = instances.testCV(folds, fold);
 		}
 		else {
-			nextTrainSet = trainInstances;
+			nextTrainSet = instances;
 			nextTestSet = instances;
+			System.err.println("Parameters yield identical similar and test sets");
 		}
 	}
 	/**
@@ -291,7 +152,7 @@ public class DatasetScheme {
 	}
 
 	public double measureImbalance() {
-		double[] frequencies = DatasetMetrics.getPriors(getAllTrainInstances());
+		double[] frequencies = DatasetMetrics.getPriors(instances);
 		if(frequencies.length!=2) {
 			double ret = 0;
 			for(int i=0;i<frequencies.length;i++)
