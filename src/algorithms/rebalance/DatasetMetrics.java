@@ -3,7 +3,18 @@ package algorithms.rebalance;
 import weka.core.Instance;
 import weka.core.Instances;
 
+/**
+ * <h1>DatasetMetrics</h1>
+ * A simple class for calculating class priors.
+ * @author Emmanouil Krasanakis
+ */
 public class DatasetMetrics {
+	/**
+	 * <h1>getPriors</h1>
+	 * Produces priors that sum to 1 for the given collection of instances.
+	 * @param instances the given collection of instances
+	 * @return an array of priors
+	 */
 	public static double[] getPriors(Instances instances) {
 		//obtain frequencies
 		double[] frequencies = new double[instances.numClasses()];

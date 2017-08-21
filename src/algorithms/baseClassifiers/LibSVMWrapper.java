@@ -15,7 +15,7 @@ import weka.core.Instances;
  * This class can be used to support the libsvm implementation for Support Vector Machines as a Weka
  * {@link Classifier}.
  * 
- * @author Krasanakis Emmanouil
+ * @author Emmanouil Krasanakis
  */
 public class LibSVMWrapper extends Classifier implements Serializable {
 	private static final long serialVersionUID = 941746327712873734L;

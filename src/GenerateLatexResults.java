@@ -20,10 +20,6 @@ public class GenerateLatexResults {
 		ExperimentScheme baseExperimentScheme = experimentSchemes.get(0);
 		experimentSchemes.remove(baseExperimentScheme);
 		
-		// report dataset balance
-		for(DatasetScheme dataset : datasetScemes) 
-			System.out.println(dataset.toString()+" imabalance: "+ dataset.measureImbalance());
-		
 		// set output to file
 		//System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream("out\\"+scheme+".txt")), true));
 		

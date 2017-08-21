@@ -12,7 +12,7 @@ import weka.core.Instances;
  * Voting is performed while taking object {@link #dot} similarity into account.<br/>
  * There are not options to be set.
  * 
- * @author Krasanakis Emmanouil
+ * @author Emmanouil Krasanakis
  */
 public class ImprovedSmoothKNN extends Classifier implements Serializable { 
 	private static final long serialVersionUID = 5994345396055948907L;
@@ -57,7 +57,7 @@ public class ImprovedSmoothKNN extends Classifier implements Serializable {
 	/**
 	 * <h1>dot</h1>
 	 * This function supports both numeric and nominal atttributes. Nominal attributes contribute only as being
-	 * completely or not similar.
+	 * identical or not similar.
 	 * @param instance
 	 * @param test
 	 * @return the dot product between two {@link weka.core.Instance} objects, excluding NaN fields

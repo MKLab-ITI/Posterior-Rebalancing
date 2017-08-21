@@ -22,14 +22,19 @@ import weka.filters.Filter;
  * <code>none</code> : does not perform rebalancing <br/>
  * <code>lin[ear]</code> : uses the rebalance function(1-f)*w <br/>
  * <code>exp[onential]</code> : uses the rebalance function w^f <br/>
- * <code>inv[erse]</code> : uses the rebalance function (w*min(f)/f)^(1/3.5) <br/>
+ * <code>inv[erse]</code> : uses the rebalance function w*(min(f)/f)^(1/3.5) <br/>
+ * <code>log[arithmic]</code> : uses the rebalance function log(w)*(min(f)/f)^(1/3.5) <br/>
+ * <code>thr[esholding]</code> : uses a constant rebalance function <br/>
+ * <code>ada[ptive thresholding]</code> : instead of using a rebalance function, 
+ * 	sets the weight of the minority class and trains towards the weight of the majority class (APPLICABLE TO BINARY PROBLEMS ONLY) <br/>
  * <h2>-pre[process]</h2>
  * <code>[re]sample</code> : performs resamling before training <br/>
  * <code>SMOTE</code> : performs SMOTE before training
  * <h2>-rebalance</h1>
  * Sets the rebalance parameter <code>a</code>, performing rebalance as <code>w = (1-a)w + a function(w,f)</code>.<br/>
  * For resampling, this values determines the bias towards a normal distribution.
- * Default value is <code>0.8</code>.
+ * Default value is <code>0.8</code>.<br/>
+ * Can set the value as <code>tune</tune> to perform tuning over the training set towards a balance objective.
  * <h2>-dynamic</h2>
  * Selects dynamic rebalance selection options (default value is <code>entropy</code>;<br/>
  * <code>none</code> : the rebalance parameter is a constant <br/>
@@ -44,13 +49,14 @@ import weka.filters.Filter;
  * sign can also determine positive or negative rebalance if not otherwise specified.
  * <h2>-trained</h2>
  * Denotes that the base classifier does not need training when calling {@link #buildClassifier}. Should be
- * used <b>only</b> when trying to avoid retraining when calculating parameters for weight rebalance.
+ * used only when trying to avoid retraining when calculating parameters for weight rebalance.
  * <h2>-sensitive</h2>
  * Uses the log function to make original classifications more sensitive and uncertain.
  * <h2>-debug</h2>
- * Send some detailed information to <code>System.out</code>.
+ * Send detailed information to <code>System.out</code>, including the otherwise withheld messages of the
+ * base classifier.
  * 
- * @author Krasanakis Emmanouil
+ * @author Emmanouil Krasanakis
  */
 public class ClassRebalance extends Classifier implements Serializable {
 	private static final long serialVersionUID = -7184425438333439884L;

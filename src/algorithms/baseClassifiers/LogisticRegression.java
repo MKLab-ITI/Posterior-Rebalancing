@@ -14,7 +14,7 @@ import weka.core.Instances;
  * heap overflow from occurring by not employing that process.
  * 
  * @author Krasanakis Emmanouil
- * @deprecated This classifier performs sub-optimally, as it does not implement regularization.
+ * @deprecated This classifier does not implement regularization.
  */
 public class LogisticRegression extends Classifier implements Serializable { 
 	private static final long serialVersionUID = 6383329433068885155L;

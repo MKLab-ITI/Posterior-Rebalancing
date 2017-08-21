@@ -5,9 +5,6 @@ import java.util.Random;
 
 import algorithms.rebalance.DatasetMetrics;
 import weka.core.Instances;
-import weka.filters.Filter;
-import weka.filters.unsupervised.attribute.Remove;
-import weka.filters.unsupervised.attribute.StringToNominal;
 
 /**
  * <h1>DatasetScheme</h1>
@@ -45,7 +42,11 @@ public class DatasetScheme {
 		this.baggingSplit = baggingSplit;
 		instances = importDataset(path, dataType, convertToBinaryIfPossible, true);
 		this.name = name.isEmpty()?instances.classAttribute().name().replace("/", "_").replace("\\", "_"):name;
-		System.out.println(this.name+": "+instances.numInstances()+" instances, "+(instances.numAttributes()-1)+" features, "+instances.numClasses()+" classes");
+		System.out.println(this.name+": "
+				+instances.numInstances()+" instances, "
+				+(instances.numAttributes()-1)+" features, "
+				+instances.numClasses()+" classes, "
+				+Math.round(100*measureImbalance())/100.0+" imbalance");
 		
 		instances.randomize(new Random(randomSeed));
 		if(baggingSplit!=0 && folds>1)

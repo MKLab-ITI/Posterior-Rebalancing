@@ -27,7 +27,7 @@ import weka.core.Instances;
  * <h2>-debug</h1>
  * Outputs split process information to <code>System.out</code>. (After enabling, it cannot be disabled.)
  * 
- * @author Krasanakis Emmanouil
+ * @author Emmanouil Krasanakis
  */
 public class Clusterer extends Classifier implements Serializable {
 	private static final long serialVersionUID = 2901702435471874617L;

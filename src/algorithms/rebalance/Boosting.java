@@ -1,25 +1,25 @@
-package algorithms.baseClassifiers;
+package algorithms.rebalance;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 
-import algorithms.rebalance.ClassRebalance;
-import algorithms.rebalance.DatasetMetrics;
-import algorithms.rebalance.DeepCopy;
 import weka.classifiers.Classifier;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.filters.Filter;
 
+/**
+ * <h1>Boosting</h1>
+ * An abstract class which presents basic utility for AdaBoost ensembles of a resampled base classifier.
+ * @author Emmanouil Krasanakis
+ */
 public abstract class Boosting extends Classifier implements Serializable {
 	private static final long serialVersionUID = -8058566690484220883L;
 	private Classifier [] classifiers;
 	private double [] classifierWeights;
 	private int Tfinal;
 	
-	public Boosting() {
+	protected Boosting() {
 	}
 	
 	public abstract Instances generateBoostDataset(Instances instances, int classifierId, int numberOfClassifiers) throws Exception;
@@ -180,7 +180,11 @@ public abstract class Boosting extends Classifier implements Serializable {
 		}
 	}
 	
-	
+	/**
+	 * <h1>RUSBoost</h1>
+	 * Implements the RUSBoost method over a given base classifier.
+	 * @author Emmanouil Krasanakis
+	 */
 	public static class RUSBoost extends Boosting {
 		private static final long serialVersionUID = 5091693448499798955L;
 		private int T;
@@ -208,142 +212,4 @@ public abstract class Boosting extends Classifier implements Serializable {
 			return true;
 		}
 	}
-	
-	
-	
-	/*public static class ClusterBoost extends Boosting {
-		private static final long serialVersionUID = 2222702274438426399L;
-
-		public ClusterBoost(Classifier baseClassifierModel) {
-			super(baseClassifierModel);
-		}
-
-		@Override
-		public int calculateNumberOfClassifiers(Instances instances) throws Exception {
-			if(clusters.isEmpty()) 
-				clusters = buildClusters(instances);
-			return clusters.size();
-		}
-		
-		protected ArrayList<ArrayList<Instance>> buildClusters(Instances instances) throws Exception {
-			double[] priors = DatasetMetrics.getPriors(instances);
-			if(priors.length!=2)
-				throw new Exception("Clustered boosting can only be performed on binary problems");
-			int majorityClass = priors[0]<priors[1]?1:0;
-			int numberOfClusters = (priors[0]<priors[1])?(int)Math.ceil(priors[1]/priors[0]):(int)Math.ceil(priors[0]/priors[1]);
-			ArrayList<Instance> majorityInstances = new ArrayList<Instance>();
-			for(int i=0;i<instances.numInstances();i++)
-				if(instances.instance(i).classValue()==majorityClass)
-					majorityInstances.add(instances.instance(i));
-			System.out.println("Discovered "+majorityInstances.size()+" majority class instances to split into "+numberOfClusters+" clusters");
-			
-			HashMap<double[], ArrayList<Instance>> clusters = new HashMap<double[], ArrayList<Instance>>();
-			HashMap<Instance, double[]> instanceClusters = new HashMap<Instance, double[]>();
-			int classIndex = instances.classIndex();
-			for(int cl=0;cl<numberOfClusters;cl++) {
-				double[] center = new double[instances.numAttributes()-1];
-				for(int i=0;i<classIndex;i++)
-					center[i] = Math.random()*instances.meanOrMode(i)*2;
-				for(int i=classIndex;i<center.length;i++)
-					center[i] = Math.random()*instances.meanOrMode(i+1)*2;
-				clusters.put(center, new ArrayList<Instance>());
-				//System.out.println("Center: "+Arrays.toString(center));
-			}
-			System.out.print("Progress ");
-			
-			int repeat = majorityInstances.size()+1;
-			while(repeat!=0) {
-				repeat = 0;
-				//reclassify instance
-				for(Instance instance : majorityInstances) {
-					double[] prevCenter = instanceClusters.get(instance);
-					double[] nearestCenter = null;
-					double nearestDistance = Double.POSITIVE_INFINITY;
-					for(double[] center : clusters.keySet()) {
-						double distance = 0;
-						for(int i=0;i<classIndex;i++)
-							if(!Double.isNaN(instance.value(i)))
-								distance += (center[i]-instance.value(i))*(center[i]-instance.value(i));
-						for(int i=classIndex;i<center.length;i++)
-							if(!Double.isNaN(instance.value(i+1)))
-								distance += (center[i]-instance.value(i+1))*(center[i]-instance.value(i+1));
-						if(distance<nearestDistance) {
-							nearestDistance = distance;
-							nearestCenter = center;
-						}
-					}
-					
-					//change cluster for instance if necessary
-					if(prevCenter!=nearestCenter) {
-						if(prevCenter!=null)
-							clusters.get(prevCenter).remove(instance);
-						clusters.get(nearestCenter).add(instance);
-						instanceClusters.put(instance, nearestCenter);
-						repeat++;
-					}
-				}
-				
-				System.out.print("-");
-				//System.out.println("-------------------");
-				for(double[] center : new ArrayList<double[]>(clusters.keySet())) 
-					if(clusters.get(center).isEmpty()){
-						//clusters.remove(center);//instead of removing create new center
-						int count = 0;
-						for(double[] otherCenter : clusters.keySet()) 
-							if(!clusters.get(otherCenter).isEmpty()) {
-								for(int i=0;i<center.length;i++)
-									center[i] += otherCenter[i];
-								count++;
-							}
-						for(int i=0;i<center.length;i++)
-							center[i] *= Math.random()*2/count;
-					}
-				//recalculate centers
-				for(double[] center : clusters.keySet()) {
-					for(int i=0;i<center.length;i++)
-						center[i] = 0;
-					for(Instance instance : clusters.get(center)) {
-						for(int i=0;i<classIndex;i++)
-							if(!Double.isNaN(instance.value(i)))
-								center[i] += instance.value(i);
-						for(int i=classIndex;i<center.length;i++)
-							if(!Double.isNaN(instance.value(i+1)))
-								center[i] += instance.value(i+1);
-					}
-					if(clusters.get(center).size()!=0)
-						for(int i=0;i<center.length;i++)
-							center[i] /= clusters.get(center).size();
-					//System.out.println("Center ("+clusters.get(center).size()+")\t: "+Arrays.toString(center));
-				}
-			}
-
-			for(double[] center : new ArrayList<double[]>(clusters.keySet())) 
-				if(clusters.get(center).isEmpty())
-					clusters.remove(center);
-			
-			System.out.println("\nFinal split into "+clusters.size()+" clusters");
-			
-			return new ArrayList<ArrayList<Instance>>(clusters.values());
-		}
-		
-		private ArrayList<ArrayList<Instance>> clusters = new ArrayList<ArrayList<Instance>>();
-
-		@Override
-		public Instances generateBoostDataset(Instances instances, int classifierId, int numberOfClassifiers) throws Exception {
-			ArrayList<Instance> cluster = clusters.get(classifierId);
-			Instances trainingInstances = new Instances(instances, cluster.size());//initialize empty set of instances
-			for(Instance instance : cluster) {
-				Instance temp = new Instance(instance);
-				temp.setDataset(trainingInstances);
-				trainingInstances.add(temp);
-			}
-			return trainingInstances;
-		}
-
-		@Override
-		public boolean keepOnlyFavorableBoosts() {
-			return true;
-		}
-		
-	}*/
 }
