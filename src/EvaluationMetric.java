@@ -9,6 +9,14 @@ import weka.classifiers.Evaluation;
 import weka.core.Instance;
 import weka.core.Instances;
 
+/**
+ * <h1>EvaluationMetric</h1>
+ * This is a common interface to between custom (e.g. entropy-aware) imbalance metrics obtained through Weka {@link Evaluation}.
+ * For each cross-validation fold, {@link #validateInstances(Instances, Classifier, Classifier)} should be called. Afterwards,
+ * {@link #getValue(Evaluation)} obtains the desired metric value by also taking into account evaluation performed by Weka
+ * (certain metrics don't take this information into account, whereas others use only the results of weka's evaluation).
+ * @author Emmanouil Krasanakis
+ */
 public interface EvaluationMetric {
 	public default void validateInstances(Instances test, Classifier classifier, Classifier baseClassifier) {
 		try{

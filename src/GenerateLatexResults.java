@@ -10,22 +10,25 @@ public class GenerateLatexResults {
 	public static enum ExperimentFamily {postProcess, postProcessSampling, postProcessSMOTE};
 
 	public static void main(String[] args) throws Exception {
-		// load datasets and generate experiment schemes
+		// LOAD DATASETS AND CREATE EXPERIMENT SCHEMES
 		ArrayList<DatasetScheme> datasetScemes = importDatasetSchemes(10, true);//load 10-fold cross validation datasets
 		ArrayList<ExperimentScheme> experimentSchemes = generateExperimentSchemes("Logistic", ExperimentFamily.postProcess);
-		//extract base scheme from experiment schemes
+		
+		// EXTRACT BASE SCHEME FROM EXPERIMENT SCHEMES
 		ExperimentScheme baseExperimentScheme = experimentSchemes.get(0);
 		experimentSchemes.remove(baseExperimentScheme);
-		//add metrics to experiment with
+		
+		// SELECT EXPERIMENT METRICS
 		ArrayList<EvaluationMetric> metrics = new ArrayList<EvaluationMetric>();
 		metrics.add(new EvaluationMetric.GM());
 		metrics.add(new EvaluationMetric.Imbalance());
 		metrics.add(new EvaluationMetric.AUC());
 		metrics.add(new EvaluationMetric.ILoss());
 		
-		// set output to file
+		// SET OUTPUT TO FILE
 		//System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream("out\\"+scheme+".txt")), true));
 		
+		// GENERATE LATEX TABLE
 		String tableSeparator = " & ";
 		for(DatasetScheme dataset : datasetScemes) {
 			System.out.print("\\textbf{"+dataset.toString()+"}");
@@ -34,7 +37,7 @@ public class GenerateLatexResults {
 			System.out.println("\\\\");
 		}
 		
-		// notify user that experiments finished
+		// NOTIFY USER ON FINISH
 		java.awt.Toolkit.getDefaultToolkit().beep();
 	}
 	
@@ -81,6 +84,15 @@ public class GenerateLatexResults {
 		return datasetSchemes;
 	}
 	
+	/**
+	 * <h1>generateExperimentSchemes</h1>
+	 * Generates a list of experiment schemes, according to the choice of base classifier and experiment family.
+	 * The first element in the list is the base scheme against which other schemes are compared to (the base scheme can
+	 * be different to all other schemes).
+	 * @param baseClassifier
+	 * @param experimentFamily
+	 * @return a list of experiment schemes
+	 */
 	public static ArrayList<ExperimentScheme> generateExperimentSchemes(String baseClassifier, ExperimentFamily experimentFamily) {
 		ArrayList<ExperimentScheme> experimentSchemes = new ArrayList<ExperimentScheme>();
 		if(experimentFamily==ExperimentFamily.postProcess) {
@@ -107,12 +119,14 @@ public class GenerateLatexResults {
 		return experimentSchemes;
 	}
 	
-	
 	/**
 	 * <h1>latexResults</h1>
+	 * @param separator
 	 * @param datasetScheme
 	 * @param experimentScheme
-	 * @return evaluation for given experiment scheme on the given dataset
+	 * @param baseExperimentScheme
+	 * @param metrics
+	 * @return a sub-table which contains evaluation for the given experiment scheme on the given dataset over the designated metrics
 	 */
 	public static String latexResults(String separator, DatasetScheme datasetScheme, ExperimentScheme experimentScheme, ExperimentScheme baseExperimentScheme, ArrayList<EvaluationMetric> metrics) {
 		String ret = "";
