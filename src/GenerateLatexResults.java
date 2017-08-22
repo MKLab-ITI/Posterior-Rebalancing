@@ -1,8 +1,5 @@
 import java.util.ArrayList;
 
-import org.apache.commons.math3.stat.inference.MannWhitneyUTest;
-import org.apache.commons.math3.stat.inference.TTest;
-
 import algorithms.rebalance.ClassRebalance;
 import algorithms.rebalance.ExperimentScheme;
 import importer.DatasetScheme;
@@ -19,6 +16,12 @@ public class GenerateLatexResults {
 		//extract base scheme from experiment schemes
 		ExperimentScheme baseExperimentScheme = experimentSchemes.get(0);
 		experimentSchemes.remove(baseExperimentScheme);
+		//add metrics to experiment with
+		ArrayList<EvaluationMetric> metrics = new ArrayList<EvaluationMetric>();
+		metrics.add(new EvaluationMetric.GM());
+		metrics.add(new EvaluationMetric.Imbalance());
+		metrics.add(new EvaluationMetric.AUC());
+		metrics.add(new EvaluationMetric.ILoss());
 		
 		// set output to file
 		//System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream("out\\"+scheme+".txt")), true));
@@ -27,7 +30,7 @@ public class GenerateLatexResults {
 		for(DatasetScheme dataset : datasetScemes) {
 			System.out.print("\\textbf{"+dataset.toString()+"}");
 			for(ExperimentScheme experimentScheme : experimentSchemes) 
-				System.out.print(tableSeparator+latexResults(tableSeparator, dataset, experimentScheme, baseExperimentScheme));
+				System.out.print(tableSeparator+latexResults(tableSeparator, dataset, experimentScheme, baseExperimentScheme, metrics));
 			System.out.println("\\\\");
 		}
 		
@@ -111,117 +114,30 @@ public class GenerateLatexResults {
 	 * @param experimentScheme
 	 * @return evaluation for given experiment scheme on the given dataset
 	 */
-	public static String latexResults(String separator, DatasetScheme datasetScheme, ExperimentScheme experimentScheme, ExperimentScheme baseExperimentScheme) {
+	public static String latexResults(String separator, DatasetScheme datasetScheme, ExperimentScheme experimentScheme, ExperimentScheme baseExperimentScheme, ArrayList<EvaluationMetric> metrics) {
 		String ret = "";
+		for(EvaluationMetric metric : metrics)
+			metric.clear();
 		try{
-		Instances instances = datasetScheme.getAllTestInstances();
-	    Evaluation eval = new Evaluation(instances);
-	    double gain = 0;
-	    int gainN = 0;
-	    double entropy = 0;
-		ArrayList<Double> ranksCorrect = new ArrayList<Double>();
-		ArrayList<Double> ranksIncorrect = new ArrayList<Double>();
-		ArrayList<Double> entropiesBase = new ArrayList<Double>();
-		ArrayList<Double> entropies = new ArrayList<Double>();
-		
-    	for (int n = 0; n < datasetScheme.getFolds(); n++) {
-    		ClassRebalance classifier = (ClassRebalance)experimentScheme.produceClassifier();
-    		ClassRebalance baseClassifier = (ClassRebalance)baseExperimentScheme.produceClassifier();
-			datasetScheme.produceNextSets(n);
-			Instances train = datasetScheme.getTrainSet();
-			Instances test = datasetScheme.getTestSet();
-			baseClassifier.buildClassifier(train);
-			classifier.buildClassifier(train);
-			eval.evaluateModel(classifier, test);
-			
-			for(int i=0;i<test.numInstances();i++) {
-				double instanceEntropy = ClassRebalance.normalizedEntropy(classifier.distributionForInstance(test.instance(i)));
-				double instanceGain = instanceEntropy - ClassRebalance.normalizedEntropy(baseClassifier.distributionForInstance(test.instance(i)));
-				if((classifier.classifyInstance(test.instance(i))==test.instance(i).classValue()) 
-						&& (baseClassifier.classifyInstance(test.instance(i))==test.instance(i).classValue()))
-					gain += instanceGain;
-				else if((classifier.classifyInstance(test.instance(i))==test.instance(i).classValue()) 
-						&& (baseClassifier.classifyInstance(test.instance(i))!=test.instance(i).classValue()))
-					{}//gain -= instanceGain;
-				else if((classifier.classifyInstance(test.instance(i))!=test.instance(i).classValue()) 
-						&& (baseClassifier.classifyInstance(test.instance(i))==test.instance(i).classValue()))
-					gain += instanceGain;
-				else if((classifier.classifyInstance(test.instance(i))!=test.instance(i).classValue()) 
-						&& (baseClassifier.classifyInstance(test.instance(i))!=test.instance(i).classValue()))
-					{}//gain -= instanceGain;
-				if(classifier.classifyInstance(test.instance(i))==test.instance(i).classValue())
-					entropy += instanceEntropy;
-				//else
-					//entropy -= instanceEntropy;
-				
-				int classifyInstance = (int) baseClassifier.classifyInstance(test.instance(i));
-				if(classifyInstance==test.instance(i).classValue())
-					ranksCorrect.add(-instanceGain);
-				else
-					ranksIncorrect.add(-instanceGain);
-				
-				if(baseClassifier.classifyInstance(test.instance(i))==test.instance(i).classValue())
-					entropiesBase.add(instanceEntropy-instanceGain);
-				else
-					entropiesBase.add(-instanceEntropy+instanceGain);
-
-				if(classifier.classifyInstance(test.instance(i))==test.instance(i).classValue())
-					entropies.add(instanceEntropy);
-				else
-					entropies.add(-instanceEntropy);
-				
-				gainN++;
+			Instances instances = datasetScheme.getAllTestInstances();
+			//perform cross-validation evaluation on metrics
+		    Evaluation eval = new Evaluation(instances);
+	    	for (int n = 0; n < datasetScheme.getFolds(); n++) {
+	    		ClassRebalance classifier = (ClassRebalance)experimentScheme.produceClassifier();
+	    		ClassRebalance baseClassifier = (ClassRebalance)baseExperimentScheme.produceClassifier();
+				datasetScheme.produceNextSets(n);
+				Instances train = datasetScheme.getTrainSet();
+				Instances test = datasetScheme.getTestSet();
+				classifier.buildClassifier(train);
+				baseClassifier.buildClassifier(train);
+				eval.evaluateModel(classifier, test);
+				for(EvaluationMetric metric : metrics)
+					metric.validateInstances(test, classifier, baseClassifier);
 			}
-		}
-	    
-	    //eval.crossValidateModel(algorithm.produceClassifier(), instances, dataset.getFolds(), new java.util.Random(1));
-		
-	    double[] classFrequencies = eval.getClassPriors();
-		double sumFrequencies = 0;
-		for(int i=0;i<classFrequencies.length;i++)
-			sumFrequencies += classFrequencies[i];
-		for(int i=0;i<classFrequencies.length;i++)
-			classFrequencies[i] /= sumFrequencies;
-		double meanTPr = 0;
-		double GTPr = 1;
-		int count = 0;
-	    for(int i=0;i<instances.numClasses();i++)  {
-	    	if(classFrequencies[i]==0)
-	    		continue;
-		    meanTPr += eval.truePositiveRate(i)/instances.numClasses();
-		    count++;
-		    GTPr *= eval.truePositiveRate(i);
-	    }
-	    GTPr =  Math.pow(GTPr,1.0/count);
-	    
-	    double fairNom = 0;
-		double fairDenom = 0;
-		for(int i=0;i<instances.numClasses();i++) {
-			if(classFrequencies[i]==0)
-				continue;
-		    for(int j=0;j<instances.numClasses();j++)
-			    if(i!=j){
-			    	if(classFrequencies[j]==0)
-			    		continue;
-			    	fairNom += classFrequencies[i]*classFrequencies[j]*Math.abs(eval.truePositiveRate(i)-eval.truePositiveRate(j));
-			    	fairDenom += classFrequencies[i]*classFrequencies[j];
-			    }
-		}
-		
-		MannWhitneyUTest uTest = new MannWhitneyUTest();
-		double U = (double)uTest.mannWhitneyU(toPrimitive(ranksCorrect), toPrimitive(ranksIncorrect));
-		U = U/ranksCorrect.size()/ranksIncorrect.size();
-		TTest tTest = new TTest();
-		double T = (double)tTest.tTest(toPrimitive(entropies), toPrimitive(entropiesBase));
-	
-		//ret += toPercentage(eval.weightedTruePositiveRate(), 0)+"\\% & ";//wTPr
-		ret += toPercentage(GTPr)+separator;//GM
-		ret += toPercentage(fairNom/fairDenom)+separator;//imbalance
-		ret += toPercentage(eval.weightedAreaUnderROC())+separator;//wAUC
-		ret += toPercentage(gain/gainN);//information loss
-		//ret += toPercentage(U,0)+"U ";//measures whether distributions differ between correct and incorrect classifications (0.5=don't differ, 1=certain)
-		//ret += toPercentage(T,0)+"T ";
-		//ret += toPercentage(2*U-1,0)+"r ";//rank-biserial correlation, i.e. the proportion of samples that confirm the hypothesis that distributions differ between correct and incorrect
+			//obtain imbalance measures
+			for(EvaluationMetric metric : metrics)
+				ret += toPercentage(metric.getValue(eval))+metric.unit()+separator;
+			ret = ret.substring(0, ret.length()-separator.length());
 		}
 		catch(Exception e) {
 			System.err.println(e);
@@ -229,24 +145,6 @@ public class GenerateLatexResults {
 		}
 		return ret;
 	}
-	
-	/**
-	 * <h1>toPrimitive</h1>
-	 * @param array an array list of doubles
-	 * @return an array representation of the give array list
-	 */
-	public static double[] toPrimitive(ArrayList<Double> array) {
-		  if (array == null) {
-		    return null;
-		  } else if (array.size() == 0) {
-		    return new double[0];
-		  }
-		  final double[] result = new double[array.size()];
-		  for (int i = 0; i < array.size(); i++) {
-		    result[i] = array.get(i).doubleValue();
-		  }
-		  return result;
-		}
 
 	/**
 	 * <h1>toPercentage</h1>
