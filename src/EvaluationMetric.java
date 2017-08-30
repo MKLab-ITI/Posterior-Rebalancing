@@ -11,10 +11,12 @@ import weka.core.Instances;
 
 /**
  * <h1>EvaluationMetric</h1>
- * This is a common interface to between custom (e.g. entropy-aware) imbalance metrics obtained through Weka {@link Evaluation}.
+ * This is a common interface between custom (e.g. entropy-aware) imbalance metrics and metrics obtained through Weka {@link Evaluation}.
  * For each cross-validation fold, {@link #validateInstances(Instances, Classifier, Classifier)} should be called. Afterwards,
- * {@link #getValue(Evaluation)} obtains the desired metric value by also taking into account evaluation performed by Weka
+ * {@link #getValue(Evaluation)} obtains the desired metric value while also taking into account evaluation performed by Weka
  * (certain metrics don't take this information into account, whereas others use only the results of weka's evaluation).
+ * <br/>
+ * Custom imbalance metrics compare classifiers to their provided base classifier, to examine the effects of mitigating imbalance.
  * @author Emmanouil Krasanakis
  */
 public interface EvaluationMetric {
@@ -60,6 +62,13 @@ public interface EvaluationMetric {
 		  return result;
 	}
 	
+	/**
+	 * <h1>ILoss</h1>
+	 * Novel metric which computes the average information loss in comparison to a base 
+	 * classifier when the base classifier samples are accurately computed
+	 * (information loss is not considered to occur otherwise).
+	 * @author Emmanouil Krasanakis
+	 */
 	public static class ILoss implements EvaluationMetric {
 		private double gain = 0;
 		private int n = 0;
@@ -93,7 +102,11 @@ public interface EvaluationMetric {
 			n = 0;
 		}
 	}
-	
+	/**
+	 * <h1>CorrectEntropyTTest</h1>
+	 * Performs T-test to check that distribution entropies are similar between the base and the imbalance-aware classifier.
+	 * @author Emmanouil Krasanakis
+	 */
 	public static class CorrectEntropyTTest implements EvaluationMetric {
 		private ArrayList<Double> entropiesBase = new ArrayList<Double>();
 		private ArrayList<Double> entropies = new ArrayList<Double>();
@@ -124,7 +137,14 @@ public interface EvaluationMetric {
 			entropies.clear();
 		}
 	}
-	
+
+	/**
+	 * <h1>CorrectEntropyUTest</h1>
+	 * Performs two-tailed U-test to check whether entropy gain for correct classifications is equal to entropy gain 
+	 * for incorrect classifications of the imbalance-aware classifier.
+	 * @author Emmanouil Krasanakis
+	 * @see CorrectEntropyBiserialCorrelation
+	 */
 	public static class CorrectEntropyUTest implements EvaluationMetric {
 		private ArrayList<Double> ranksCorrect = new ArrayList<Double>();
 		private ArrayList<Double> ranksIncorrect = new ArrayList<Double>();
@@ -154,7 +174,11 @@ public interface EvaluationMetric {
 			ranksIncorrect.clear();
 		}
 	}
-	
+	/**
+	 * <h1>CorrectEntropyBiserialCorrelation</h1>
+	 * Calculates the biserial metric for {@link CorrectEntropyUTest}.
+	 * @author Emmanouil Krasanakis
+	 */
 	public static class CorrectEntropyBiserialCorrelation extends CorrectEntropyUTest {
 		@Override
 		public double getValue(Evaluation evaluation) {
@@ -166,7 +190,12 @@ public interface EvaluationMetric {
 			return "r";
 		}
 	}
-	
+
+	/**
+	 * <h1>GM</h1>
+	 * Calculates the geometric mean between TPRs obtained from Weka's {@link Evaluation}.
+	 * @author Emmanouil Krasanakis
+	 */
 	public static class GM implements EvaluationMetric {
 		@Override
 		public void validateInstances(Instances test, Classifier classifier, Classifier baseClassifier) {
@@ -201,6 +230,11 @@ public interface EvaluationMetric {
 	}
 	
 
+	/**
+	 * <h1>AM</h1>
+	 * Calculates the arithmetic mean between TPRs obtained from Weka's {@link Evaluation}.
+	 * @author Emmanouil Krasanakis
+	 */
 	public static class AM implements EvaluationMetric {
 		@Override
 		public void validateInstances(Instances test, Classifier classifier, Classifier baseClassifier) {
@@ -233,7 +267,12 @@ public interface EvaluationMetric {
 		    return meanTPr;
 		}
 	}
-	
+
+	/**
+	 * <h1>AUC</h1>
+	 * Reports the weighted AUC from Weka's {@link Evaluation}.
+	 * @author Emmanouil Krasanakis
+	 */
 	public static class AUC implements EvaluationMetric {
 		@Override
 		public void validateInstances(Instances test, Classifier classifier, Classifier baseClassifier) {
@@ -256,7 +295,13 @@ public interface EvaluationMetric {
 		    return evaluation.weightedAreaUnderROC();
 		}
 	}
-	
+
+	/**
+	 * <h1>Imbalance</h1>
+	 * Calculates weighted average differences between TPRs obtained from Weka's {@link Evaluation}.
+	 * (For two-class problems, this weighted averages become simple averages.)
+	 * @author Emmanouil Krasanakis
+	 */
 	public static class Imbalance implements EvaluationMetric {
 		@Override
 		public void validateInstances(Instances test, Classifier classifier, Classifier baseClassifier) {
