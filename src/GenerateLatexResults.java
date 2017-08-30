@@ -5,7 +5,11 @@ import algorithms.rebalance.ExperimentScheme;
 import importer.DatasetScheme;
 import weka.classifiers.Evaluation;
 import weka.core.Instances;
-
+/**
+ * <h1>GenerateLatexResults</h1>
+ * The {@link #main(String[])} method setups experiments to obtain a Latex table of results.
+ * @author Emmanouil Krasanakis
+ */
 public class GenerateLatexResults {
 	public static enum ExperimentFamily {postProcess, postProcessSampling, postProcessSMOTE};
 
@@ -24,6 +28,7 @@ public class GenerateLatexResults {
 		metrics.add(new EvaluationMetric.Imbalance());
 		metrics.add(new EvaluationMetric.AUC());
 		metrics.add(new EvaluationMetric.ILoss());
+		metrics.add(new EvaluationMetric.CorrectEntropyUTest());
 		
 		// SET OUTPUT TO FILE
 		//System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream("out\\"+scheme+".txt")), true));
